@@ -173,7 +173,8 @@
   <button id="btnReset">Reset</button>
   <button id="btnPause">Pause</button>
   <button id="btnDamping">Damping: Off</button>
-  <button id="btnToggle" class="active">View: Twin</button>
+  <button id="btnTwin" class="active">Show: Twin Pendulum</button>
+  <button id="btnPhase">Show: Phase Space</button>
 </div>
 
 <div class="info">Drag either mass to position · Release to swing · Works on mobile</div>
@@ -502,12 +503,20 @@ document.getElementById('btnPause').addEventListener('click', function() {
 document.getElementById('btnDamping').addEventListener('click', function() {
   damping=!damping; this.textContent='Damping: '+(damping?'On':'Off');
 });
-document.getElementById('btnToggle').addEventListener('click', function() {
-  viewMode = viewMode === 'twin' ? 'phase' : 'twin';
-  this.textContent = 'View: ' + (viewMode === 'twin' ? 'Twin' : 'Phase');
-  rightLabel.textContent = viewMode === 'twin'
-    ? 'Twin — top arm 1/100,000th longer'
-    : 'Phase Space — plotting arm 1 angle vs arm 2 angle over time';
+const btnTwin = document.getElementById('btnTwin');
+const btnPhase = document.getElementById('btnPhase');
+
+btnTwin.addEventListener('click', function() {
+  viewMode = 'twin';
+  btnTwin.classList.add('active');
+  btnPhase.classList.remove('active');
+  rightLabel.textContent = 'Twin — top arm 1/100,000th longer';
+});
+btnPhase.addEventListener('click', function() {
+  viewMode = 'phase';
+  btnPhase.classList.add('active');
+  btnTwin.classList.remove('active');
+  rightLabel.textContent = 'Phase Space — plotting arm 1 angle vs arm 2 angle over time';
 });
 
 updateLabels();
