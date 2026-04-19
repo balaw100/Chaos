@@ -16,6 +16,11 @@
     padding:12px 12px 28px;
     user-select:none; -webkit-user-select:none;
   }
+  .layout {
+    width:100%;
+    max-width:900px;
+    display:flex; flex-direction:column; align-items:center;
+  }
   h1 {
     font-size:1rem; font-weight:300;
     letter-spacing:0.15em; text-transform:uppercase;
@@ -80,9 +85,9 @@
   .ts-legend span { display:flex; align-items:center; gap:3px; }
   .dot { width:5px; height:5px; border-radius:50%; display:inline-block; }
   .panel {
-    display:grid; grid-template-columns:1fr 1fr;
+    display:grid; grid-template-columns:1fr 1fr 1fr;
     gap:7px 24px; margin-top:12px;
-    width:100%; max-width:760px;
+    width:100%; max-width:900px;
   }
   .slider-group { display:flex; flex-direction:column; gap:2px; }
   .slider-group label {
@@ -118,6 +123,7 @@
 </head>
 <body>
 
+<div class="layout">
 <h1>Strange Attractors</h1>
 <div class="eq-title" id="eqTitle"></div>
 <div class="selector" id="selector"></div>
@@ -125,11 +131,6 @@
 
 <div class="canvas-wrap">
   <canvas id="mainCanvas"></canvas>
-  <div class="hud">
-    <div>x = <span class="val" id="hudX">—</span></div>
-    <div>y = <span class="val" id="hudY">—</span></div>
-    <div>z = <span class="val" id="hudZ">—</span></div>
-  </div>
 </div>
 
 <div class="ts-wrap">
@@ -163,6 +164,7 @@
     <label>Zoom <span id="zoomVal">1.0</span></label>
     <input type="range" id="zoomSlider" min="0.5" max="20" step="0.1" value="1.0">
   </div>
+<div id="paramBox" style="display:contents;"></div>
 </div>
 
 <div class="controls">
@@ -171,7 +173,7 @@
   <button id="btnClear">Clear</button>
 </div>
 
-<div class="info">Drag to rotate · Select an attractor above · Watch the time series for the chaos signature</div>
+<div class="info">Drag to rotate · Select an attractor above · Adjust its parameters with the sliders · Watch the time series for the chaos signature</div>
 
 <script>
 // ── attractor definitions ────────────────────────────────────────────────────
@@ -183,7 +185,7 @@ const ATTRACTORS = {
     init:[1,1,1], dt:0.005,
     params:{sigma:10,rho:28,beta:2.667},
     step(x,y,z,p){return[p.sigma*(y-x), x*(p.rho-z)-y, x*y-p.beta*z];},
-    center:[0,0,25], zoom:1.0, defZoom:3.5, hue:200,
+    center:[0,0,25], zoom:1.0, defZoom:3,  defSpeed:7,  hue:200,
   },
   rossler: {
     name:'Rössler',
@@ -192,7 +194,7 @@ const ATTRACTORS = {
     init:[1,1,1], dt:0.01,
     params:{a:0.2,b:0.2,c:5.7},
     step(x,y,z,p){return[-y-z, x+p.a*y, p.b+z*(x-p.c)];},
-    center:[0,0,4], zoom:1.0, defZoom:3.5, hue:280,
+    center:[0,0,4], zoom:1.0, defZoom:8,  defSpeed:8,  hue:280,
   },
   thomas: {
     name:'Thomas',
@@ -201,7 +203,7 @@ const ATTRACTORS = {
     init:[0.1,0,0], dt:0.05,
     params:{b:0.208186},
     step(x,y,z,p){return[Math.sin(y)-p.b*x, Math.sin(z)-p.b*y, Math.sin(x)-p.b*z];},
-    center:[0,0,0], zoom:1.0, defZoom:8.0, hue:140,
+    center:[0,0,0], zoom:1.0, defZoom:16, defSpeed:10, hue:140,
   },
   halvorsen: {
     name:'Halvorsen',
@@ -210,7 +212,7 @@ const ATTRACTORS = {
     init:[-5,0,0], dt:0.005,
     params:{a:1.4},
     step(x,y,z,p){return[-p.a*x-4*y-4*z-y*y, -p.a*y-4*z-4*x-z*z, -p.a*z-4*x-4*y-x*x];},
-    center:[0,0,0], zoom:1.0, defZoom:5.0, hue:30,
+    center:[0,0,0], zoom:1.0, defZoom:5,  defSpeed:8,  hue:30,
   },
   aizawa: {
     name:'Aizawa',
@@ -223,14 +225,14 @@ const ATTRACTORS = {
       p.d*x + (z-p.b)*y,
       p.c + p.a*z - z*z*z/3 - (x*x+y*y)*(1+p.e*z) + p.f*z*x*x*x
     ];},
-    center:[0,0,0.5], zoom:1.0, defZoom:10.0, hue:55,
+    center:[0,0,0.5], zoom:1.0, defZoom:15, defSpeed:9,  hue:55,
   },
 };
 
 // ── sizing ───────────────────────────────────────────────────────────────────
-const maxW = Math.min(760, window.innerWidth - 24);
+const maxW = Math.min(900, window.innerWidth - 24);
 const H3d  = Math.round(maxW * 0.7);
-const HTs  = Math.round(maxW * 0.22);
+const HTs  = Math.round(maxW * 0.15);
 
 const mainCanvas = document.getElementById('mainCanvas');
 const ctx        = mainCanvas.getContext('2d');
@@ -259,7 +261,10 @@ function loadAttractor(key) {
   camAngleY=0.5; camAngleX=-0.25;
   document.getElementById('zoomSlider').value = A.defZoom;
   zoomLevel = A.defZoom;
+  document.getElementById('speedSlider').value = A.defSpeed;
   updateLabels();
+  resetParams(key);
+  buildParamBox(key);
   document.querySelectorAll('.sel-btn').forEach(b=>
     b.classList.toggle('active', b.dataset.key===key));
 }
@@ -405,6 +410,73 @@ function drawTimeSeries(){
   });
 }
 
+
+// ── per-attractor parameters ─────────────────────────────────────────────────
+const ATTRACTOR_PARAMS = {
+  lorenz:    [
+    {id:'p_sigma', label:'σ sigma', min:1,   max:30,  step:0.5,  val:10,    key:'sigma'},
+    {id:'p_rho',   label:'ρ rho',   min:0.1, max:50,  step:0.5,  val:28,    key:'rho'},
+    {id:'p_beta',  label:'β beta',  min:0.1, max:8,   step:0.1,  val:2.667, key:'beta'},
+  ],
+  rossler:   [
+    {id:'p_a', label:'a', min:0.01, max:0.5, step:0.01, val:0.2, key:'a'},
+    {id:'p_b', label:'b', min:0.01, max:0.5, step:0.01, val:0.2, key:'b'},
+    {id:'p_c', label:'c', min:1,    max:12,  step:0.1,  val:5.7, key:'c'},
+  ],
+  thomas:    [
+    {id:'p_b', label:'b  (dissipation)', min:0.1, max:0.35, step:0.005, val:0.208, key:'b'},
+  ],
+  halvorsen: [
+    {id:'p_a', label:'a', min:0.5, max:2.5, step:0.05, val:1.4, key:'a'},
+  ],
+  aizawa:    [
+    {id:'p_a', label:'a', min:0.5, max:1.2, step:0.01, val:0.95, key:'a'},
+    {id:'p_b', label:'b', min:0.3, max:1.0, step:0.01, val:0.7,  key:'b'},
+    {id:'p_c', label:'c', min:0.3, max:1.0, step:0.01, val:0.6,  key:'c'},
+  ],
+};
+
+function buildParamBox(key) {
+  const box = document.getElementById('paramBox');
+  box.innerHTML = '';
+  const params = ATTRACTOR_PARAMS[key] || [];
+  params.forEach(p => {
+    const valId = p.id + '_val';
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'font-size:0.58rem;color:#ffffff;display:flex;justify-content:space-between;font-family:JetBrains Mono,monospace;';
+    lbl.innerHTML = p.label + ' <span id="' + valId + '" style="color:#aac8ff;font-size:0.68rem;">' + p.val + '</span>';
+    const inp = document.createElement('input');
+    inp.type = 'range';
+    inp.id = p.id;
+    inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = p.val;
+    inp.style.cssText = '-webkit-appearance:none;width:100%;height:5px;background:#1a1a2e;border-radius:3px;outline:none;';
+    inp.addEventListener('input', function(){
+      document.getElementById(valId).textContent = parseFloat(this.value).toFixed(3).replace(/\.?0+$/,'');
+      syncParams(key);
+    });
+    div.appendChild(lbl);
+    div.appendChild(inp);
+    box.appendChild(div);
+  });
+}
+
+function syncParams(key) {
+  const params = ATTRACTOR_PARAMS[key] || [];
+  params.forEach(p => {
+    const el = document.getElementById(p.id);
+    if (el) ATTRACTORS[key].params[p.key] = parseFloat(el.value);
+  });
+}
+
+function resetParams(key) {
+  const params = ATTRACTOR_PARAMS[key] || [];
+  params.forEach(p => {
+    ATTRACTORS[key].params[p.key] = p.val;
+  });
+}
+
 // ── animation ─────────────────────────────────────────────────────────────────
 function animate(){
   zoomLevel = parseFloat(document.getElementById('zoomSlider').value);
@@ -423,9 +495,6 @@ function animate(){
   ctx.fillRect(0,0,maxW,H3d);
   drawTrail(A,p.bright);
   drawAxis();
-  document.getElementById('hudX').textContent=x.toFixed(2);
-  document.getElementById('hudY').textContent=y.toFixed(2);
-  document.getElementById('hudZ').textContent=z.toFixed(2);
   drawTimeSeries();
   requestAnimationFrame(animate);
 }
@@ -472,5 +541,6 @@ updateLabels();
 loadAttractor('lorenz');
 requestAnimationFrame(animate);
 </script>
+</div>
 </body>
 </html>
