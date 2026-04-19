@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strange Attractors</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a0a0f;
+    color:#ffffff;
+    font-family:'JetBrains Mono',monospace;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh;
+    padding:12px 12px 28px;
+    user-select:none; -webkit-user-select:none;
+  }
+  h1 {
+    font-size:1rem; font-weight:300;
+    letter-spacing:0.15em; text-transform:uppercase;
+    color:#ffffff; margin-bottom:3px;
+  }
+  .eq-title {
+    font-size:0.58rem; color:#ffffff;
+    margin-bottom:6px; text-align:center;
+    letter-spacing:0.03em; min-height:1.2em;
+  }
+  .selector {
+    display:flex; gap:6px; flex-wrap:wrap;
+    justify-content:center; margin-bottom:8px;
+  }
+  .sel-btn {
+    background:#111118; border:1px solid #2a2a44;
+    color:#ffffff; font-family:'JetBrains Mono',monospace;
+    font-size:0.6rem; padding:4px 11px;
+    border-radius:3px; cursor:pointer; transition:all 0.2s;
+    letter-spacing:0.05em;
+  }
+  .sel-btn:hover  { background:#1a1a2e; color:#ffffff; }
+  .sel-btn.active { background:#1e3050; border-color:#4a7aaa; color:#aac8ff; }
+  .attractor-desc {
+    font-size:0.58rem; color:#ffffff;
+    margin-bottom:10px; text-align:center;
+    min-height:1.6em; letter-spacing:0.02em;
+    max-width:700px;
+  }
+  .canvas-wrap {
+    position:relative;
+    border:1px solid #1a1a2e; border-radius:4px;
+    overflow:hidden; background:#06060a;
+    width:100%;
+  }
+  #mainCanvas { display:block; cursor:grab; width:100%; }
+  #tsCanvas { display:block; }
+  canvas:active { cursor:grabbing; }
+  .hud {
+    position:absolute; top:8px; left:10px;
+    font-size:10px; line-height:1.7; color:#ffffff;
+    pointer-events:none;
+  }
+  .hud .val { color:#aac8ff; }
+  
+  .ts-wrap {
+    margin-top:6px; width:100%;
+    border:1px solid #1a1a2e; border-radius:4px;
+    background:#06060a; overflow:hidden; position:relative;
+  }
+  .ts-label {
+    position:absolute; top:5px; left:10px;
+    font-size:8px; color:#ffffff;
+    letter-spacing:0.1em; text-transform:uppercase;
+    pointer-events:none;
+  }
+  .ts-legend {
+    position:absolute; top:5px; right:10px;
+    font-size:8px; display:flex; gap:10px;
+    pointer-events:none;
+  }
+  .ts-legend span { display:flex; align-items:center; gap:3px; }
+  .dot { width:5px; height:5px; border-radius:50%; display:inline-block; }
+  .panel {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:7px 24px; margin-top:12px;
+    width:100%; max-width:760px;
+  }
+  .slider-group { display:flex; flex-direction:column; gap:2px; }
+  .slider-group label {
+    font-size:0.58rem; color:#ffffff;
+    display:flex; justify-content:space-between;
+  }
+  .slider-group label span { color:#aac8ff; font-size:0.68rem; }
+  input[type=range] {
+    -webkit-appearance:none; width:100%; height:5px;
+    background:#1a1a2e; border-radius:3px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px; height:14px;
+    border-radius:50%; background:#4a6fa5; cursor:pointer;
+    border:2px solid #0a0a0f;
+  }
+  .controls {
+    display:flex; gap:8px; margin-top:10px;
+    flex-wrap:wrap; justify-content:center;
+  }
+  .controls button {
+    background:#1a1a2e; border:1px solid #2a2a44;
+    color:#ffffff; font-family:'JetBrains Mono',monospace;
+    font-size:0.62rem; padding:5px 12px;
+    border-radius:3px; cursor:pointer; transition:all 0.2s;
+  }
+  .controls button:hover  { background:#2a2a44; color:#ffffff; }
+  .info {
+    font-size:0.52rem; color:#ffffff;
+    margin-top:8px; text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Strange Attractors</h1>
+<div class="eq-title" id="eqTitle"></div>
+<div class="selector" id="selector"></div>
+<div class="attractor-desc" id="desc"></div>
+
+<div class="canvas-wrap">
+  <canvas id="mainCanvas"></canvas>
+  <div class="hud">
+    <div>x = <span class="val" id="hudX">—</span></div>
+    <div>y = <span class="val" id="hudY">—</span></div>
+    <div>z = <span class="val" id="hudZ">—</span></div>
+  </div>
+</div>
+
+<div class="ts-wrap">
+  <div class="ts-label">x · y · z over time</div>
+  <div class="ts-legend">
+    <span><span class="dot" style="background:#4a9fff"></span>x</span>
+    <span><span class="dot" style="background:#ff9944"></span>y</span>
+    <span><span class="dot" style="background:#66ddaa"></span>z</span>
+  </div>
+  <canvas id="tsCanvas"></canvas>
+</div>
+
+<div class="panel">
+  <div class="slider-group">
+    <label>Trail length <span id="trailVal">3000</span></label>
+    <input type="range" id="trailSlider" min="300" max="8000" step="100" value="3000">
+  </div>
+  <div class="slider-group">
+    <label>Speed <span id="speedVal">3</span></label>
+    <input type="range" id="speedSlider" min="1" max="10" step="1" value="3">
+  </div>
+  <div class="slider-group">
+    <label>Rotation speed <span id="rotVal">0.3</span></label>
+    <input type="range" id="rotSlider" min="0" max="2" step="0.1" value="0.3">
+  </div>
+  <div class="slider-group">
+    <label>Brightness <span id="brightVal">1.0</span></label>
+    <input type="range" id="brightSlider" min="0.3" max="2" step="0.1" value="1.0">
+  </div>
+  <div class="slider-group">
+    <label>Zoom <span id="zoomVal">1.0</span></label>
+    <input type="range" id="zoomSlider" min="0.5" max="20" step="0.1" value="1.0">
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btnReset">Reset</button>
+  <button id="btnPause">Pause</button>
+  <button id="btnClear">Clear</button>
+</div>
+
+<div class="info">Drag to rotate · Select an attractor above · Watch the time series for the chaos signature</div>
+
+<script>
+// ── attractor definitions ────────────────────────────────────────────────────
+const ATTRACTORS = {
+  lorenz: {
+    name:'Lorenz',
+    desc:'Edward Lorenz, 1963. A model of atmospheric convection — the birthplace of the butterfly effect. Never repeats, never escapes.',
+    eq:'dx=σ(y−x)  ·  dy=x(ρ−z)−y  ·  dz=xy−βz',
+    init:[1,1,1], dt:0.005,
+    params:{sigma:10,rho:28,beta:2.667},
+    step(x,y,z,p){return[p.sigma*(y-x), x*(p.rho-z)-y, x*y-p.beta*z];},
+    center:[0,0,25], zoom:1.0, defZoom:3.5, hue:200,
+  },
+  rossler: {
+    name:'Rössler',
+    desc:'Otto Rössler, 1976. Simpler than Lorenz — a spiral that stretches and folds back on itself. One lobe, infinite complexity inside.',
+    eq:'dx=−y−z  ·  dy=x+ay  ·  dz=b+z(x−c)',
+    init:[1,1,1], dt:0.01,
+    params:{a:0.2,b:0.2,c:5.7},
+    step(x,y,z,p){return[-y-z, x+p.a*y, p.b+z*(x-p.c)];},
+    center:[0,0,4], zoom:1.0, defZoom:3.5, hue:280,
+  },
+  thomas: {
+    name:'Thomas',
+    desc:'René Thomas, 1999. Cyclically symmetric — x drives y, y drives z, z drives x. Produces tangled ribbon structures in all three planes.',
+    eq:'dx=sin(y)−bx  ·  dy=sin(z)−by  ·  dz=sin(x)−bz',
+    init:[0.1,0,0], dt:0.05,
+    params:{b:0.208186},
+    step(x,y,z,p){return[Math.sin(y)-p.b*x, Math.sin(z)-p.b*y, Math.sin(x)-p.b*z];},
+    center:[0,0,0], zoom:1.0, defZoom:8.0, hue:140,
+  },
+  halvorsen: {
+    name:'Halvorsen',
+    desc:'Three-fold symmetric — each axis equation has the same structure, rotated one variable. Creates a triple-spiral form unlike any other attractor.',
+    eq:'dx=−ax−4y−4z−y²  ·  (cyclically symmetric)',
+    init:[-5,0,0], dt:0.005,
+    params:{a:1.4},
+    step(x,y,z,p){return[-p.a*x-4*y-4*z-y*y, -p.a*y-4*z-4*x-z*z, -p.a*z-4*x-4*y-x*x];},
+    center:[0,0,0], zoom:1.0, defZoom:5.0, hue:30,
+  },
+  aizawa: {
+    name:'Aizawa',
+    desc:'Yositake Aizawa. Resembles a torus wrapped around a central spine — one of the most alien-looking members of the strange attractor family.',
+    eq:'dx=(z−b)x−dy  ·  dy=dx+(z−b)y  ·  dz=c+az−z³/3−x²(1+ez)+fzx³',
+    init:[0.1,0,0], dt:0.01,
+    params:{a:0.95,b:0.7,c:0.6,d:3.5,e:0.25,f:0.1},
+    step(x,y,z,p){return[
+      (z-p.b)*x - p.d*y,
+      p.d*x + (z-p.b)*y,
+      p.c + p.a*z - z*z*z/3 - (x*x+y*y)*(1+p.e*z) + p.f*z*x*x*x
+    ];},
+    center:[0,0,0.5], zoom:1.0, defZoom:10.0, hue:55,
+  },
+};
+
+// ── sizing ───────────────────────────────────────────────────────────────────
+const maxW = Math.min(760, window.innerWidth - 24);
+const H3d  = Math.round(maxW * 0.7);
+const HTs  = Math.round(maxW * 0.22);
+
+const mainCanvas = document.getElementById('mainCanvas');
+const ctx        = mainCanvas.getContext('2d');
+mainCanvas.width  = maxW;
+mainCanvas.height = H3d;
+
+const tsCanvas = document.getElementById('tsCanvas');
+const tsCtx    = tsCanvas.getContext('2d');
+tsCanvas.width  = maxW;
+tsCanvas.height = HTs;
+
+// ── state ────────────────────────────────────────────────────────────────────
+let current='lorenz', x, y, z;
+let trail=[], tsHistory=[];
+const TS_MAX=600;
+let paused=false, camAngleY=0.5, camAngleX=-0.25;
+let dragging=false, lastMouse=null;
+
+function loadAttractor(key) {
+  current=key;
+  const A=ATTRACTORS[key];
+  [x,y,z]=[...A.init];
+  trail=[]; tsHistory=[];
+  document.getElementById('desc').textContent=A.desc;
+  document.getElementById('eqTitle').textContent=A.eq;
+  camAngleY=0.5; camAngleX=-0.25;
+  document.getElementById('zoomSlider').value = A.defZoom;
+  zoomLevel = A.defZoom;
+  updateLabels();
+  document.querySelectorAll('.sel-btn').forEach(b=>
+    b.classList.toggle('active', b.dataset.key===key));
+}
+
+// build selector
+const selEl=document.getElementById('selector');
+Object.keys(ATTRACTORS).forEach(key=>{
+  const b=document.createElement('button');
+  b.className='sel-btn'; b.dataset.key=key;
+  b.textContent=ATTRACTORS[key].name;
+  b.addEventListener('click',()=>loadAttractor(key));
+  selEl.appendChild(b);
+});
+
+// ── sliders ──────────────────────────────────────────────────────────────────
+function getP(){
+  return{
+    trailLen:parseInt(document.getElementById('trailSlider').value),
+    speed:parseInt(document.getElementById('speedSlider').value),
+    rotSpeed:parseFloat(document.getElementById('rotSlider').value),
+    bright:parseFloat(document.getElementById('brightSlider').value),
+  };
+}
+function updateLabels(){
+  const p=getP();
+  document.getElementById('trailVal').textContent=p.trailLen;
+  document.getElementById('speedVal').textContent=p.speed;
+  document.getElementById('rotVal').textContent=p.rotSpeed.toFixed(1);
+  document.getElementById('brightVal').textContent=p.bright.toFixed(1);
+  document.getElementById('zoomVal').textContent=parseFloat(document.getElementById('zoomSlider').value).toFixed(1);
+}
+['trailSlider','speedSlider','rotSlider','brightSlider','zoomSlider'].forEach(id=>
+  document.getElementById(id).addEventListener('input',updateLabels));
+
+// ── RK4 ─────────────────────────────────────────────────────────────────────
+function rk4(px,py,pz,dt,A){
+  const f=(a,b,c)=>A.step(a,b,c,A.params);
+  const k1=f(px,py,pz);
+  const k2=f(px+dt/2*k1[0],py+dt/2*k1[1],pz+dt/2*k1[2]);
+  const k3=f(px+dt/2*k2[0],py+dt/2*k2[1],pz+dt/2*k2[2]);
+  const k4=f(px+dt*k3[0],  py+dt*k3[1],  pz+dt*k3[2]);
+  return[
+    px+dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
+    py+dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]),
+    pz+dt/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]),
+  ];
+}
+
+// ── projection ───────────────────────────────────────────────────────────────
+function project(px,py,pz,A){
+  const[cx,cy,cz]=A.center;
+  const ax=px-cx, ay=py-cy, az=pz-cz;
+  const cosY=Math.cos(camAngleY),sinY=Math.sin(camAngleY);
+  const rx= ax*cosY+az*sinY, rz1=-ax*sinY+az*cosY, ry=ay;
+  const cosX=Math.cos(camAngleX),sinX=Math.sin(camAngleX);
+  const ry2=ry*cosX-rz1*sinX, rz2=ry*sinX+rz1*cosX;
+  const sc=(maxW/3.5) * A.zoom * zoomLevel;
+  
+  return{
+    x: maxW/2 + rx * sc / (80 + rz2),
+    y: H3d/2 - ry2 * sc / (80 + rz2),
+    depth:rz2,
+  };
+}
+
+// ── draw 3D ──────────────────────────────────────────────────────────────────
+function drawTrail(A,bright){
+  if(trail.length<2)return;
+  const n=trail.length;
+  for(let i=1;i<n;i++){
+    const p1=project(trail[i-1][0],trail[i-1][1],trail[i-1][2],A);
+    const p2=project(trail[i][0],  trail[i][1],  trail[i][2],  A);
+    const t=i/n;
+    const depthRange=80;
+    const fade=Math.max(0.1,Math.min(1,(p2.depth+depthRange/2)/depthRange));
+    const hue=(A.hue+t*180)%360;
+    const lum=Math.round(Math.min(70,(28+fade*32)*bright));
+    const alpha=t*0.9*Math.min(1,bright);
+    ctx.strokeStyle=`hsla(${hue},75%,${lum}%,${alpha})`;
+    ctx.lineWidth=0.5+t*2.2*fade;
+    ctx.beginPath();
+    ctx.moveTo(p1.x,p1.y);
+    ctx.lineTo(p2.x,p2.y);
+    ctx.stroke();
+  }
+  const lp=trail[trail.length-1];
+  const hp=project(lp[0],lp[1],lp[2],A);
+  ctx.fillStyle='#ffffff';
+  ctx.beginPath();
+  ctx.arc(hp.x,hp.y,3.5,0,Math.PI*2);
+  ctx.fill();
+  // glow
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.arc(hp.x,hp.y,7,0,Math.PI*2);
+  ctx.fill();
+}
+
+// ── axis widget ───────────────────────────────────────────────────────────────
+function drawAxis(){
+  const ox=maxW-44, oy=H3d-44, len=30;
+  const AXES=[
+    {v:[1,0,0],color:'#cc4444',label:'X'},
+    {v:[0,1,0],color:'#44aa44',label:'Y'},
+    {v:[0,0,1],color:'#4477cc',label:'Z'},
+  ];
+  AXES.forEach(({v,color,label})=>{
+    let[ax,ay,az]=v;
+    const cosY=Math.cos(camAngleY),sinY=Math.sin(camAngleY);
+    const rx= ax*cosY+az*sinY, rz1=-ax*sinY+az*cosY, ry=ay;
+    const cosX=Math.cos(camAngleX),sinX=Math.sin(camAngleX);
+    const ry2=ry*cosX-rz1*sinX;
+    const ex=ox+rx*len, ey=oy-ry2*len;
+    ctx.strokeStyle=color; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ex,ey); ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.font='bold 9px JetBrains Mono';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label, ex+(ex-ox)*0.22, ey+(ey-oy)*0.22);
+  });
+  ctx.fillStyle='#2a2a44';
+  ctx.beginPath(); ctx.arc(ox,oy,2.5,0,Math.PI*2); ctx.fill();
+}
+
+// ── time series ───────────────────────────────────────────────────────────────
+function drawTimeSeries(){
+  tsCtx.fillStyle='#06060a';
+  tsCtx.fillRect(0,0,maxW,HTs);
+  if(tsHistory.length<2)return;
+  const pad=16,iH=HTs-pad*2,iW=maxW-pad*2;
+  [{key:'x',color:'#4a9fff'},{key:'y',color:'#ff9944'},{key:'z',color:'#66ddaa'}]
+  .forEach(ch=>{
+    const vals=tsHistory.map(d=>d[ch.key]);
+    const mn=Math.min(...vals), mx=Math.max(...vals), range=mx-mn||1;
+    tsCtx.beginPath();
+    tsCtx.strokeStyle=ch.color; tsCtx.lineWidth=1.2; tsCtx.globalAlpha=0.8;
+    for(let i=0;i<tsHistory.length;i++){
+      const xp=pad+(i/(TS_MAX-1))*iW;
+      const yp=pad+(1-(tsHistory[i][ch.key]-mn)/range)*iH;
+      i===0?tsCtx.moveTo(xp,yp):tsCtx.lineTo(xp,yp);
+    }
+    tsCtx.stroke(); tsCtx.globalAlpha=1;
+  });
+}
+
+// ── animation ─────────────────────────────────────────────────────────────────
+function animate(){
+  zoomLevel = parseFloat(document.getElementById('zoomSlider').value);
+  const p=getP(), A=ATTRACTORS[current];
+  if(!paused){
+    if(!dragging) camAngleY+=p.rotSpeed*0.003;
+    for(let s=0;s<p.speed;s++){
+      [x,y,z]=rk4(x,y,z,A.dt,A);
+      trail.push([x,y,z]);
+      if(trail.length>p.trailLen) trail.shift();
+      tsHistory.push({x,y,z});
+      if(tsHistory.length>TS_MAX) tsHistory.shift();
+    }
+  }
+  ctx.fillStyle='#06060a';
+  ctx.fillRect(0,0,maxW,H3d);
+  drawTrail(A,p.bright);
+  drawAxis();
+  document.getElementById('hudX').textContent=x.toFixed(2);
+  document.getElementById('hudY').textContent=y.toFixed(2);
+  document.getElementById('hudZ').textContent=z.toFixed(2);
+  drawTimeSeries();
+  requestAnimationFrame(animate);
+}
+
+// ── drag ─────────────────────────────────────────────────────────────────────
+mainCanvas.addEventListener('mousedown',e=>{
+  dragging=true;
+  const r=mainCanvas.getBoundingClientRect();
+  lastMouse={x:e.clientX-r.left,y:e.clientY-r.top};
+});
+window.addEventListener('mousemove',e=>{
+  if(!dragging||!lastMouse)return;
+  const r=mainCanvas.getBoundingClientRect();
+  camAngleY+=(e.clientX-r.left-lastMouse.x)*0.01;
+  camAngleX+=(e.clientY-r.top -lastMouse.y)*0.01;
+  camAngleX=Math.max(-Math.PI/2,Math.min(Math.PI/2,camAngleX));
+  lastMouse={x:e.clientX-r.left,y:e.clientY-r.top};
+});
+window.addEventListener('mouseup',()=>{dragging=false;lastMouse=null;});
+mainCanvas.addEventListener('touchstart',e=>{
+  e.preventDefault();dragging=true;
+  const r=mainCanvas.getBoundingClientRect();
+  lastMouse={x:e.touches[0].clientX-r.left,y:e.touches[0].clientY-r.top};
+},{passive:false});
+mainCanvas.addEventListener('touchmove',e=>{
+  e.preventDefault();if(!dragging||!lastMouse)return;
+  const r=mainCanvas.getBoundingClientRect();
+  camAngleY+=(e.touches[0].clientX-r.left-lastMouse.x)*0.01;
+  camAngleX+=(e.touches[0].clientY-r.top -lastMouse.y)*0.01;
+  camAngleX=Math.max(-Math.PI/2,Math.min(Math.PI/2,camAngleX));
+  lastMouse={x:e.touches[0].clientX-r.left,y:e.touches[0].clientY-r.top};
+},{passive:false});
+mainCanvas.addEventListener('touchend',e=>{
+  e.preventDefault();dragging=false;lastMouse=null;
+},{passive:false});
+
+document.getElementById('btnReset').addEventListener('click',()=>loadAttractor(current));
+document.getElementById('btnPause').addEventListener('click',function(){
+  paused=!paused;this.textContent=paused?'Resume':'Pause';
+});
+document.getElementById('btnClear').addEventListener('click',()=>{trail=[];tsHistory=[];});
+
+updateLabels();
+loadAttractor('lorenz');
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
