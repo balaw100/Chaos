@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double Pendulum</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #c8c8d0;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    font-size: 1rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #e0e0e8;
+    margin-bottom: 2px;
+  }
+  .subtitle {
+    font-size: 0.7rem;
+    color: #ffffff;
+    margin-bottom: 10px;
+    letter-spacing: 0.05em;
+  }
+  .duo {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .canvas-wrap {
+    position: relative;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #06060a;
+  }
+  .canvas-label {
+    font-size: 0.55rem;
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 3px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  canvas { display: block; }
+  #pendCanvas { cursor: grab; }
+  #pendCanvas:active { cursor: grabbing; }
+  .panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+    margin-top: 12px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .slider-group label {
+    font-size: 0.6rem;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+  }
+  .slider-group label span { color: #aac8ff; font-size: 0.7rem; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #1a1a2e;
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #4a6fa5;
+    cursor: pointer;
+    border: 2px solid #0a0a0f;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .controls button {
+    background: #1a1a2e;
+    border: 1px solid #2a2a44;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    padding: 5px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .controls button:hover { background: #2a2a44; color: #e0e0e8; }
+  .controls button.active { background: #2a4a6a; border-color: #4a7aaa; }
+  .info {
+    font-size: 0.55rem;
+    color: #ffffff;
+    margin-top: 6px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Double Pendulum</h1>
+<div class="subtitle">Grab the masses and fling them</div>
+
+<div class="duo">
+  <div>
+    <div class="canvas-label">Pendulum</div>
+    <div class="canvas-wrap">
+      <canvas id="pendCanvas"></canvas>
+    </div>
+  </div>
+  <div>
+    <div class="canvas-label" id="rightLabel">Twin — top arm 1/100,000th longer</div>
+    <div class="canvas-wrap">
+      <canvas id="rightCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="slider-group">
+    <label>Arm 1 length <span id="l1Val">1.00</span></label>
+    <input type="range" id="l1Slider" min="0.3" max="2.0" step="0.05" value="1.0">
+  </div>
+  <div class="slider-group">
+    <label>Arm 2 length <span id="l2Val">1.00</span></label>
+    <input type="range" id="l2Slider" min="0.3" max="2.0" step="0.05" value="1.0">
+  </div>
+  <div class="slider-group">
+    <label>Mass 1 <span id="m1Val">1.00</span></label>
+    <input type="range" id="m1Slider" min="0.2" max="3.0" step="0.1" value="1.0">
+  </div>
+  <div class="slider-group">
+    <label>Mass 2 <span id="m2Val">1.00</span></label>
+    <input type="range" id="m2Slider" min="0.2" max="3.0" step="0.1" value="1.0">
+  </div>
+  <div class="slider-group">
+    <label>Gravity <span id="gVal">9.8</span></label>
+    <input type="range" id="gSlider" min="1.0" max="20.0" step="0.5" value="9.8">
+  </div>
+  <div class="slider-group">
+    <label>Trail length <span id="trailVal">500</span></label>
+    <input type="range" id="trailSlider" min="50" max="2000" step="50" value="500">
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btnClear">Clear Trails</button>
+  <button id="btnReset">Reset</button>
+  <button id="btnPause">Pause</button>
+  <button id="btnDamping">Damping: Off</button>
+  <button id="btnToggle" class="active">View: Twin</button>
+</div>
+
+<div class="info">Drag either mass to position · Release to swing · Works on mobile</div>
+
+<script>
+const pendCanvas = document.getElementById('pendCanvas');
+const pendCtx = pendCanvas.getContext('2d');
+const rightCanvas = document.getElementById('rightCanvas');
+const rightCtx = rightCanvas.getContext('2d');
+const rightLabel = document.getElementById('rightLabel');
+
+const isMobile = window.innerWidth < 700;
+const CS = isMobile
+  ? Math.min(400, window.innerWidth - 24)
+  : Math.min(420, Math.floor((window.innerWidth - 40) / 2));
+
+pendCanvas.width = CS; pendCanvas.height = CS;
+rightCanvas.width = CS; rightCanvas.height = CS;
+
+const pcx = CS / 2;
+const pcy = CS * 0.35;
+const pScale = CS / 5;
+
+// Sliders
+const sl = {
+  l1: document.getElementById('l1Slider'), l2: document.getElementById('l2Slider'),
+  m1: document.getElementById('m1Slider'), m2: document.getElementById('m2Slider'),
+  g: document.getElementById('gSlider'), trail: document.getElementById('trailSlider'),
+};
+const vl = {
+  l1: document.getElementById('l1Val'), l2: document.getElementById('l2Val'),
+  m1: document.getElementById('m1Val'), m2: document.getElementById('m2Val'),
+  g: document.getElementById('gVal'), trail: document.getElementById('trailVal'),
+};
+
+function getP() {
+  return {
+    l1: parseFloat(sl.l1.value), l2: parseFloat(sl.l2.value),
+    m1: parseFloat(sl.m1.value), m2: parseFloat(sl.m2.value),
+    g: parseFloat(sl.g.value), trailLen: parseInt(sl.trail.value),
+  };
+}
+function updateLabels() {
+  const p = getP();
+  vl.l1.textContent = p.l1.toFixed(2); vl.l2.textContent = p.l2.toFixed(2);
+  vl.m1.textContent = p.m1.toFixed(2); vl.m2.textContent = p.m2.toFixed(2);
+  vl.g.textContent = p.g.toFixed(1); vl.trail.textContent = p.trailLen;
+}
+
+// State — primary pendulum
+let t1 = Math.PI / 2, t2 = Math.PI / 2, w1 = 0, w2 = 0;
+// State — twin pendulum (top arm 0.01% longer)
+const LENGTH_FACTOR = 1.00001;
+let tt1 = t1, tt2 = t2, tw1 = 0, tw2 = 0;
+
+let pendTrail = [], twinTrail = [], phaseTrail = [];
+let paused = false, damping = false, dragging = null;
+let viewMode = 'twin'; // 'twin' or 'phase'
+
+// Physics
+function deriv(a1, a2, v1, v2, p) {
+  const { l1, l2, m1, m2, g } = p;
+  const sd = Math.sin(a1 - a2), cd = Math.cos(a1 - a2);
+  const den = 2*m1 + m2 - m2*Math.cos(2*a1 - 2*a2);
+  const n1 = -g*(m1+m2)*Math.sin(a1) - m2*g*Math.sin(a1-2*a2) - 2*sd*m2*(v2*v2*l2 + v1*v1*l1*cd);
+  const n2 = 2*sd*(v1*v1*l1*(m1+m2) + g*(m1+m2)*Math.cos(a1) + v2*v2*l2*m2*cd);
+  return [v1, v2, n1/(l1*den), n2/(l2*den)];
+}
+
+function rk4(a1, a2, v1, v2, dt, p) {
+  const dc = damping ? 0.999 : 1.0;
+  const k1 = deriv(a1, a2, v1, v2, p);
+  const k2 = deriv(a1+dt/2*k1[0], a2+dt/2*k1[1], v1+dt/2*k1[2], v2+dt/2*k1[3], p);
+  const k3 = deriv(a1+dt/2*k2[0], a2+dt/2*k2[1], v1+dt/2*k2[2], v2+dt/2*k2[3], p);
+  const k4 = deriv(a1+dt*k3[0], a2+dt*k3[1], v1+dt*k3[2], v2+dt*k3[3], p);
+  return [
+    a1 + dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
+    a2 + dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]),
+    (v1 + dt/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2])) * dc,
+    (v2 + dt/6*(k1[3]+2*k2[3]+2*k3[3]+k4[3])) * dc,
+  ];
+}
+
+function pos(a1, a2, p) {
+  const x1 = pcx + p.l1*pScale*Math.sin(a1);
+  const y1 = pcy + p.l1*pScale*Math.cos(a1);
+  const x2 = x1 + p.l2*pScale*Math.sin(a2);
+  const y2 = y1 + p.l2*pScale*Math.cos(a2);
+  return { x1, y1, x2, y2 };
+}
+
+function normA(a) {
+  a = a % (2*Math.PI);
+  if (a > Math.PI) a -= 2*Math.PI;
+  if (a < -Math.PI) a += 2*Math.PI;
+  return a;
+}
+
+// Draw helpers
+function drawTrail(ctx, trail, hueBase) {
+  if (trail.length < 2) return;
+  for (let i = 1; i < trail.length; i++) {
+    const alpha = i / trail.length;
+    const hue = (hueBase + alpha*160) % 360;
+    ctx.strokeStyle = `hsla(${hue},70%,55%,${alpha*0.7})`;
+    ctx.lineWidth = 1 + alpha;
+    ctx.beginPath();
+    ctx.moveTo(trail[i-1].x, trail[i-1].y);
+    ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.stroke();
+  }
+}
+
+function drawPend(ctx, a1, a2, p, color1, color2, showReadout) {
+  const ps = pos(a1, a2, p);
+
+  // Pivot
+  ctx.fillStyle = '#555';
+  ctx.beginPath(); ctx.arc(pcx, pcy, 4, 0, Math.PI*2); ctx.fill();
+
+  // Arms
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pcx, pcy); ctx.lineTo(ps.x1, ps.y1); ctx.stroke();
+  ctx.strokeStyle = '#777';
+  ctx.beginPath(); ctx.moveTo(ps.x1, ps.y1); ctx.lineTo(ps.x2, ps.y2); ctx.stroke();
+
+  // Mass 1
+  const r1 = 6 + p.m1*4;
+  ctx.fillStyle = color1;
+  ctx.beginPath(); ctx.arc(ps.x1, ps.y1, r1, 0, Math.PI*2); ctx.fill();
+
+  // Mass 2
+  const r2 = 6 + p.m2*4;
+  ctx.fillStyle = color2;
+  ctx.beginPath(); ctx.arc(ps.x2, ps.y2, r2, 0, Math.PI*2); ctx.fill();
+
+  if (showReadout) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText(`θ₁ = ${(normA(a1)*180/Math.PI).toFixed(1)}°`, 8, 16);
+    ctx.fillText(`θ₂ = ${(normA(a2)*180/Math.PI).toFixed(1)}°`, 8, 30);
+  }
+}
+
+// Main pendulum draw
+function drawMain() {
+  const p = getP();
+  pendCtx.fillStyle = '#06060a';
+  pendCtx.fillRect(0, 0, CS, CS);
+  drawTrail(pendCtx, pendTrail, 200);
+  drawPend(pendCtx, t1, t2, p, '#4a9fff', '#ff6655', true);
+}
+
+// Twin view
+function drawTwin() {
+  const p = getP();
+  const tp = { ...p, l1: p.l1 * LENGTH_FACTOR };
+  rightCtx.fillStyle = '#06060a';
+  rightCtx.fillRect(0, 0, CS, CS);
+  drawTrail(rightCtx, twinTrail, 80);
+  drawPend(rightCtx, tt1, tt2, tp, '#44cc88', '#ffaa33', false);
+
+  // Divergence readout
+  const angleDiff = Math.abs(normA(t1) - normA(tt1)) + Math.abs(normA(t2) - normA(tt2));
+  const divergePct = Math.min(100, (angleDiff / (2*Math.PI)) * 100);
+  rightCtx.fillStyle = '#ffffff';
+  rightCtx.font = '10px JetBrains Mono';
+  rightCtx.textAlign = 'left';
+  rightCtx.fillText(`divergence: ${divergePct.toFixed(1)}%`, 8, 16);
+
+  // Sync indicator
+  if (divergePct < 1) {
+    rightCtx.fillStyle = '#44cc88';
+    rightCtx.fillText('in sync', 8, 30);
+  } else if (divergePct < 20) {
+    rightCtx.fillStyle = '#ffaa33';
+    rightCtx.fillText('drifting...', 8, 30);
+  } else {
+    rightCtx.fillStyle = '#ff6655';
+    rightCtx.fillText('diverged', 8, 30);
+  }
+}
+
+// Phase view
+function drawPhase() {
+  rightCtx.fillStyle = '#06060a';
+  rightCtx.fillRect(0, 0, CS, CS);
+
+  const pad = 40;
+  const ps = CS - pad*2;
+
+  const ticks = [-Math.PI, -Math.PI/2, 0, Math.PI/2, Math.PI];
+  const labels = ['-π', '-π/2', '0', 'π/2', 'π'];
+
+  rightCtx.strokeStyle = '#1a1a2e'; rightCtx.lineWidth = 1;
+  for (const t of ticks) {
+    const f = (t+Math.PI)/(2*Math.PI);
+    rightCtx.beginPath(); rightCtx.moveTo(pad+f*ps, pad); rightCtx.lineTo(pad+f*ps, pad+ps); rightCtx.stroke();
+    rightCtx.beginPath(); rightCtx.moveTo(pad, pad+(1-f)*ps); rightCtx.lineTo(pad+ps, pad+(1-f)*ps); rightCtx.stroke();
+  }
+
+  rightCtx.strokeStyle = '#333'; rightCtx.lineWidth = 1;
+  const mid = pad + ps/2;
+  rightCtx.beginPath(); rightCtx.moveTo(mid, pad); rightCtx.lineTo(mid, pad+ps); rightCtx.stroke();
+  rightCtx.beginPath(); rightCtx.moveTo(pad, mid); rightCtx.lineTo(pad+ps, mid); rightCtx.stroke();
+
+  rightCtx.fillStyle = '#ffffff'; rightCtx.font = '9px JetBrains Mono';
+  rightCtx.textAlign = 'center';
+  for (let i = 0; i < ticks.length; i++) {
+    const f = (ticks[i]+Math.PI)/(2*Math.PI);
+    rightCtx.fillText(labels[i], pad+f*ps, pad+ps+14);
+  }
+  rightCtx.textAlign = 'right';
+  for (let i = 0; i < ticks.length; i++) {
+    const f = (ticks[i]+Math.PI)/(2*Math.PI);
+    rightCtx.fillText(labels[ticks.length-1-i], pad-5, pad+f*ps+3);
+  }
+
+  rightCtx.fillStyle = '#ffffff'; rightCtx.font = '10px JetBrains Mono';
+  rightCtx.textAlign = 'center';
+  rightCtx.fillText('θ₁', pad+ps/2, CS-4);
+  rightCtx.save(); rightCtx.translate(10, pad+ps/2); rightCtx.rotate(-Math.PI/2);
+  rightCtx.fillText('θ₂', 0, 0); rightCtx.restore();
+
+  if (phaseTrail.length > 1) {
+    for (let i = 1; i < phaseTrail.length; i++) {
+      if (Math.abs(phaseTrail[i].a-phaseTrail[i-1].a) > Math.PI ||
+          Math.abs(phaseTrail[i].b-phaseTrail[i-1].b) > Math.PI) continue;
+      const alpha = i / phaseTrail.length;
+      const hue = (200+alpha*160) % 360;
+      const x1 = pad+((phaseTrail[i-1].a+Math.PI)/(2*Math.PI))*ps;
+      const y1 = pad+((Math.PI-phaseTrail[i-1].b)/(2*Math.PI))*ps;
+      const x2 = pad+((phaseTrail[i].a+Math.PI)/(2*Math.PI))*ps;
+      const y2 = pad+((Math.PI-phaseTrail[i].b)/(2*Math.PI))*ps;
+      rightCtx.strokeStyle = `hsla(${hue},70%,55%,${alpha*0.8})`;
+      rightCtx.lineWidth = 1+alpha*0.5;
+      rightCtx.beginPath(); rightCtx.moveTo(x1, y1); rightCtx.lineTo(x2, y2); rightCtx.stroke();
+    }
+  }
+
+  const na = normA(t1), nb = normA(t2);
+  const dx = pad+((na+Math.PI)/(2*Math.PI))*ps;
+  const dy = pad+((Math.PI-nb)/(2*Math.PI))*ps;
+  rightCtx.fillStyle = '#ffffff';
+  rightCtx.beginPath(); rightCtx.arc(dx, dy, 3, 0, Math.PI*2); rightCtx.fill();
+}
+
+// Animation
+const substeps = 4, dtStep = 0.01;
+function animate() {
+  if (!paused && !dragging) {
+    const p = getP();
+    const tp = { ...p, l1: p.l1 * LENGTH_FACTOR };
+    for (let i = 0; i < substeps; i++) {
+      [t1, t2, w1, w2] = rk4(t1, t2, w1, w2, dtStep, p);
+      [tt1, tt2, tw1, tw2] = rk4(tt1, tt2, tw1, tw2, dtStep, tp);
+    }
+    const ps1 = pos(t1, t2, p);
+    const ps2 = pos(tt1, tt2, tp);
+    pendTrail.push({ x: ps1.x2, y: ps1.y2 });
+    twinTrail.push({ x: ps2.x2, y: ps2.y2 });
+    phaseTrail.push({ a: normA(t1), b: normA(t2) });
+
+    const maxT = p.trailLen;
+    if (pendTrail.length > maxT) pendTrail.splice(0, pendTrail.length - maxT);
+    if (twinTrail.length > maxT) twinTrail.splice(0, twinTrail.length - maxT);
+    if (phaseTrail.length > maxT) phaseTrail.splice(0, phaseTrail.length - maxT);
+  }
+
+  drawMain();
+  if (viewMode === 'twin') drawTwin();
+  else drawPhase();
+
+  requestAnimationFrame(animate);
+}
+
+// Interaction
+function getMousePos(e) {
+  const rect = pendCanvas.getBoundingClientRect();
+  return { x: (e.clientX-rect.left)*(CS/rect.width), y: (e.clientY-rect.top)*(CS/rect.height) };
+}
+function getTouchPos(e) {
+  const rect = pendCanvas.getBoundingClientRect();
+  return { x: (e.touches[0].clientX-rect.left)*(CS/rect.width), y: (e.touches[0].clientY-rect.top)*(CS/rect.height) };
+}
+function hitTest(mx, my) {
+  const p = getP(), ps = pos(t1, t2, p);
+  if (Math.hypot(mx-ps.x2, my-ps.y2) < 6+p.m2*4+12) return 2;
+  if (Math.hypot(mx-ps.x1, my-ps.y1) < 6+p.m1*4+12) return 1;
+  return null;
+}
+function updateDrag(mx, my) {
+  const p = getP();
+  if (dragging === 1) {
+    t1 = Math.atan2(mx-pcx, my-pcy);
+    w1=0; w2=0;
+    tt1 = t1; tt2 = t2; tw1=0; tw2=0;
+  } else if (dragging === 2) {
+    const x1 = pcx+p.l1*pScale*Math.sin(t1), y1 = pcy+p.l1*pScale*Math.cos(t1);
+    t2 = Math.atan2(mx-x1, my-y1);
+    w1=0; w2=0;
+    tt1 = t1; tt2 = t2; tw1=0; tw2=0;
+  }
+}
+
+pendCanvas.addEventListener('mousedown', (e) => { const {x,y}=getMousePos(e); const h=hitTest(x,y); if(h){dragging=h;w1=0;w2=0;} });
+pendCanvas.addEventListener('mousemove', (e) => { if(dragging){const{x,y}=getMousePos(e);updateDrag(x,y);} });
+pendCanvas.addEventListener('mouseup', () => { dragging=null; });
+pendCanvas.addEventListener('mouseleave', () => { dragging=null; });
+pendCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); const{x,y}=getTouchPos(e); const h=hitTest(x,y); if(h){dragging=h;w1=0;w2=0;} }, {passive:false});
+pendCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); if(dragging){const{x,y}=getTouchPos(e);updateDrag(x,y);} }, {passive:false});
+pendCanvas.addEventListener('touchend', (e) => { e.preventDefault(); dragging=null; }, {passive:false});
+
+Object.values(sl).forEach(s => s.addEventListener('input', updateLabels));
+
+document.getElementById('btnClear').addEventListener('click', () => { pendTrail=[]; twinTrail=[]; phaseTrail=[]; });
+document.getElementById('btnReset').addEventListener('click', () => {
+  t1=Math.PI/2; t2=Math.PI/2; w1=0; w2=0;
+  tt1=t1; tt2=t2; tw1=0; tw2=0;
+  pendTrail=[]; twinTrail=[]; phaseTrail=[];
+});
+document.getElementById('btnPause').addEventListener('click', function() {
+  paused=!paused; this.textContent=paused?'Resume':'Pause';
+});
+document.getElementById('btnDamping').addEventListener('click', function() {
+  damping=!damping; this.textContent='Damping: '+(damping?'On':'Off');
+});
+document.getElementById('btnToggle').addEventListener('click', function() {
+  viewMode = viewMode === 'twin' ? 'phase' : 'twin';
+  this.textContent = 'View: ' + (viewMode === 'twin' ? 'Twin' : 'Phase');
+  rightLabel.textContent = viewMode === 'twin'
+    ? 'Twin — top arm 1/100,000th longer'
+    : 'Phase Space — plotting arm 1 angle vs arm 2 angle over time';
+});
+
+updateLabels();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
