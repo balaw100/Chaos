@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logistic Map Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #c8c8d0;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+  }
+  h1 {
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #e0e0e8;
+    margin-bottom: 3px;
+  }
+  .section-label {
+    font-size: 0.6rem;
+    color: #ffffff;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 10px 0 4px 0;
+  }
+  .canvas-wrap {
+    position: relative;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #06060a;
+  }
+  canvas { display: block; cursor: crosshair; }
+  .slider-wrap {
+    margin-top: 10px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+  }
+  .slider-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+  }
+  .slider-group label {
+    font-size: 0.6rem;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+  }
+  .slider-group label span { color: #aac8ff; font-size: 0.7rem; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #1a1a2e;
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #4a6fa5;
+    cursor: pointer;
+    border: 2px solid #0a0a0f;
+  }
+  .behavior {
+    font-size: 0.7rem;
+    color: #88aacc;
+    margin-top: 4px;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .controls button {
+    background: #1a1a2e;
+    border: 1px solid #2a2a44;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .controls button:hover { background: #2a2a44; color: #e0e0e8; }
+  .legend-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 0.5rem;
+    color: #ffffff;
+  }
+  .legend-row div { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .info {
+    font-size: 0.5rem;
+    color: #ffffff;
+    margin-top: 4px;
+    text-align: center;
+  }
+  .divider {
+    width: 100%;
+    max-width: 700px;
+    height: 1px;
+    background: #1a1a2e;
+    margin: 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Logistic Map Explorer</h1>
+<div style="font-size:0.75rem; color:#ffffff; margin-bottom:8px; letter-spacing:0.05em;">x_next = r × x × (1 − x)</div>
+
+<div class="section-label">Bifurcation Diagram</div>
+<div class="canvas-wrap">
+  <canvas id="bifCanvas"></canvas>
+</div>
+<div class="info">PC: Drag to zoom · Scroll to zoom · Right-click to reset · Dbl-click to set r</div>
+<div class="info">Mobile: Drag to pan · Pinch to zoom · Double-tap to set r · Long-press to reset</div>
+
+<div class="divider"></div>
+
+<div class="section-label">Orbit at current r</div>
+<div class="canvas-wrap">
+  <canvas id="orbitCanvas"></canvas>
+</div>
+
+<div class="slider-wrap">
+  <div class="slider-group">
+    <label>r coarse <span id="rVal">2.500</span></label>
+    <input type="range" id="rSlider" min="0.1" max="4.0" step="0.01" value="2.5">
+  </div>
+  <div class="slider-group">
+    <label>r fine ± 0.05 <span id="rFineVal">+0.0000</span></label>
+    <input type="range" id="rFineSlider" min="-0.05" max="0.05" step="0.0001" value="0">
+  </div>
+  <div class="slider-row">
+    <div class="slider-group">
+      <label>Starting x <span id="x0Val">0.50</span></label>
+      <input type="range" id="x0Slider" min="0.01" max="0.99" step="0.01" value="0.5">
+    </div>
+    <div class="slider-group">
+      <label>Iterations <span id="iterVal">80</span></label>
+      <input type="range" id="iterSlider" min="10" max="300" step="5" value="80">
+    </div>
+  </div>
+</div>
+
+<div class="behavior" id="behavior"></div>
+
+<div class="controls">
+  <button id="btnAnimate">Animate r ▶</button>
+  <button id="btnStop" style="display:none">Stop ■</button>
+  <button id="btnColor">Toggle Color</button>
+  <button id="btnResetBif">Reset Zoom</button>
+</div>
+
+<div class="legend-row">
+  <div><div class="legend-dot" style="background:#4a7aaa"></div> orbit path</div>
+  <div><div class="legend-dot" style="background:#ff6655"></div> settled values</div>
+  <div><div class="legend-dot" style="background:rgba(255,60,60,0.7)"></div> r position</div>
+</div>
+
+<script>
+// ===== SETUP =====
+const bifCanvas = document.getElementById('bifCanvas');
+const bifCtx = bifCanvas.getContext('2d');
+const orbitCanvas = document.getElementById('orbitCanvas');
+const orbitCtx = orbitCanvas.getContext('2d');
+
+const W = Math.min(700, window.innerWidth - 24);
+const BH = Math.round(W * 0.45);
+const OH = Math.round(W * 0.4);
+bifCanvas.width = W; bifCanvas.height = BH;
+orbitCanvas.width = W; orbitCanvas.height = OH;
+
+const rSlider = document.getElementById('rSlider');
+const rFineSlider = document.getElementById('rFineSlider');
+const x0Slider = document.getElementById('x0Slider');
+const iterSlider = document.getElementById('iterSlider');
+const rValEl = document.getElementById('rVal');
+const rFineValEl = document.getElementById('rFineVal');
+const x0ValEl = document.getElementById('x0Val');
+const iterValEl = document.getElementById('iterVal');
+const behaviorEl = document.getElementById('behavior');
+
+// Bifurcation view bounds
+let brMin = 0, brMax = 4, bxMin = 0, bxMax = 1;
+let useColor = true;
+
+// Cache the bifurcation image so we don't recompute on every r change
+let bifImageData = null;
+
+function getR() {
+  return Math.max(0, Math.min(4, parseFloat(rSlider.value) + parseFloat(rFineSlider.value)));
+}
+
+// ===== BIFURCATION DIAGRAM =====
+function renderBifurcation() {
+  const imageData = bifCtx.createImageData(W, BH);
+  const data = imageData.data;
+  const density = new Float32Array(W * BH);
+  const rSteps = W * 2;
+  const iterSkip = 300;
+  const iterShow = 150;
+
+  for (let i = 0; i < rSteps; i++) {
+    const r = brMin + (i / rSteps) * (brMax - brMin);
+    let x = 0.1 + Math.random() * 0.8;
+    for (let j = 0; j < iterSkip; j++) x = r * x * (1 - x);
+    for (let j = 0; j < iterShow; j++) {
+      x = r * x * (1 - x);
+      const px = Math.floor(((r - brMin) / (brMax - brMin)) * (W - 1));
+      const py = Math.floor((1 - (x - bxMin) / (bxMax - bxMin)) * (BH - 1));
+      if (px >= 0 && px < W && py >= 0 && py < BH) density[py * W + px]++;
+    }
+  }
+
+  let maxD = 0;
+  for (let i = 0; i < density.length; i++) if (density[i] > maxD) maxD = density[i];
+  if (maxD === 0) maxD = 1;
+
+  for (let y = 0; y < BH; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = (y * W + x) * 4;
+      const d = density[y * W + x];
+      if (d === 0) {
+        data[idx] = 6; data[idx+1] = 6; data[idx+2] = 10;
+      } else {
+        const t = Math.pow(d / maxD, 0.3);
+        if (useColor) {
+          data[idx]   = Math.floor(40 + 215 * Math.pow(t, 0.6));
+          data[idx+1] = Math.floor(180 + 75 * t);
+          data[idx+2] = Math.floor(220 * (1 - Math.pow(t, 1.5)) + 30);
+        } else {
+          const v = Math.floor(255 * t);
+          data[idx] = v; data[idx+1] = v; data[idx+2] = v;
+        }
+      }
+      data[idx+3] = 255;
+    }
+  }
+
+  bifImageData = imageData;
+  drawBifWithLine();
+}
+
+function drawBifWithLine() {
+  if (!bifImageData) return;
+  bifCtx.putImageData(bifImageData, 0, 0);
+
+  // Draw r indicator line
+  const r = getR();
+  const px = ((r - brMin) / (brMax - brMin)) * W;
+  if (px >= 0 && px <= W) {
+    bifCtx.strokeStyle = 'rgba(255, 60, 60, 0.7)';
+    bifCtx.lineWidth = 1.5;
+    bifCtx.setLineDash([]);
+    bifCtx.beginPath();
+    bifCtx.moveTo(px, 0);
+    bifCtx.lineTo(px, BH);
+    bifCtx.stroke();
+
+    // Label
+    bifCtx.fillStyle = 'rgba(255, 60, 60, 0.9)';
+    bifCtx.font = '10px JetBrains Mono';
+    bifCtx.textAlign = px > W/2 ? 'right' : 'left';
+    const labelX = px > W/2 ? px - 5 : px + 5;
+    bifCtx.fillText('r=' + r.toFixed(3), labelX, 14);
+  }
+}
+
+// ===== ORBIT VIEWER =====
+const OPAD = { top: 25, bottom: 35, left: 45, right: 15 };
+const oPlotW = W - OPAD.left - OPAD.right;
+const oPlotH = OH - OPAD.top - OPAD.bottom;
+
+function oScreenX(n, total) { return OPAD.left + (n / total) * oPlotW; }
+function oScreenY(x) { return OPAD.top + (1 - x) * oPlotH; }
+
+function detectBehavior(values) {
+  const last = values.slice(-30);
+  const tol = 0.0005;
+  const unique = [];
+  for (const v of last) {
+    let found = false;
+    for (const u of unique) { if (Math.abs(v - u) < tol) { found = true; break; } }
+    if (!found) unique.push(v);
+  }
+  if (unique.length === 1) return "Fixed point → " + unique[0].toFixed(4);
+  if (unique.length === 2) return "2-cycle → " + unique.map(v=>v.toFixed(3)).join(", ");
+  if (unique.length <= 8) return unique.length + "-cycle";
+  return "Chaos";
+}
+
+function renderOrbit() {
+  const r = getR();
+  const x0 = parseFloat(x0Slider.value);
+  const iter = parseInt(iterSlider.value);
+
+  rValEl.textContent = r.toFixed(4);
+  const rFine = parseFloat(rFineSlider.value);
+  rFineValEl.textContent = (rFine >= 0 ? '+' : '') + rFine.toFixed(4);
+  x0ValEl.textContent = x0.toFixed(2);
+  iterValEl.textContent = iter;
+
+  const values = [x0];
+  let x = x0;
+  for (let i = 0; i < iter; i++) {
+    x = r * x * (1 - x);
+    values.push(x);
+  }
+
+  orbitCtx.fillStyle = '#06060a';
+  orbitCtx.fillRect(0, 0, W, OH);
+
+  // Grid
+  orbitCtx.strokeStyle = '#151520';
+  orbitCtx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    const y = oScreenY(i / 10);
+    orbitCtx.beginPath(); orbitCtx.moveTo(OPAD.left, y); orbitCtx.lineTo(W - OPAD.right, y); orbitCtx.stroke();
+  }
+
+  // Axes
+  orbitCtx.strokeStyle = '#2a2a3a';
+  orbitCtx.beginPath();
+  orbitCtx.moveTo(OPAD.left, OPAD.top); orbitCtx.lineTo(OPAD.left, OH - OPAD.bottom);
+  orbitCtx.lineTo(W - OPAD.right, OH - OPAD.bottom);
+  orbitCtx.stroke();
+
+  // Y labels
+  orbitCtx.fillStyle = '#ffffff';
+  orbitCtx.font = '9px JetBrains Mono';
+  orbitCtx.textAlign = 'right';
+  for (let i = 0; i <= 10; i += 2) orbitCtx.fillText((i/10).toFixed(1), OPAD.left - 5, oScreenY(i/10) + 3);
+
+  // X labels
+  orbitCtx.textAlign = 'center';
+  const step = Math.max(1, Math.floor(iter / 6));
+  for (let i = 0; i <= iter; i += step) orbitCtx.fillText(i, oScreenX(i, iter), OH - OPAD.bottom + 12);
+
+  orbitCtx.fillStyle = '#ffffff';
+  orbitCtx.textAlign = 'center';
+  orbitCtx.fillText('iteration', W/2, OH - 4);
+
+  // Orbit line
+  orbitCtx.strokeStyle = 'rgba(74, 122, 170, 0.5)';
+  orbitCtx.lineWidth = 1.5;
+  orbitCtx.beginPath();
+  for (let i = 0; i < values.length; i++) {
+    const sx = oScreenX(i, iter);
+    const sy = oScreenY(Math.max(0, Math.min(1, values[i])));
+    if (i === 0) orbitCtx.moveTo(sx, sy); else orbitCtx.lineTo(sx, sy);
+  }
+  orbitCtx.stroke();
+
+  // Dots
+  const lastN = 30;
+  const cutoff = Math.max(0, values.length - lastN);
+  for (let i = 0; i < values.length; i++) {
+    const sx = oScreenX(i, iter);
+    const sy = oScreenY(Math.max(0, Math.min(1, values[i])));
+    if (i >= cutoff) {
+      orbitCtx.fillStyle = '#ff6655';
+      orbitCtx.beginPath(); orbitCtx.arc(sx, sy, 3, 0, Math.PI*2); orbitCtx.fill();
+    } else {
+      orbitCtx.fillStyle = 'rgba(74, 122, 170, 0.5)';
+      orbitCtx.beginPath(); orbitCtx.arc(sx, sy, 1.5, 0, Math.PI*2); orbitCtx.fill();
+    }
+  }
+
+  // Settled value lines
+  const lastVals = values.slice(cutoff);
+  const tol = 0.001;
+  const unique = [];
+  for (const v of lastVals) {
+    let found = false;
+    for (const u of unique) { if (Math.abs(v-u) < tol) { found = true; break; } }
+    if (!found) unique.push(v);
+  }
+  orbitCtx.setLineDash([3,5]);
+  orbitCtx.lineWidth = 1;
+  for (const v of unique.slice(0, 8)) {
+    orbitCtx.strokeStyle = 'rgba(255, 102, 85, 0.25)';
+    const y = oScreenY(Math.max(0, Math.min(1, v)));
+    orbitCtx.beginPath(); orbitCtx.moveTo(OPAD.left, y); orbitCtx.lineTo(W-OPAD.right, y); orbitCtx.stroke();
+  }
+  orbitCtx.setLineDash([]);
+
+  behaviorEl.textContent = detectBehavior(values);
+}
+
+function updateAll() {
+  drawBifWithLine();
+  renderOrbit();
+}
+
+// ===== EVENTS =====
+[rSlider, rFineSlider, x0Slider, iterSlider].forEach(s => s.addEventListener('input', updateAll));
+
+// Bifurcation zoom interactions
+let selecting = false, selStart = null, selEnd = null;
+
+bifCanvas.addEventListener('mousedown', (e) => {
+  if (e.button === 0) {
+    selecting = true;
+    const rect = bifCanvas.getBoundingClientRect();
+    selStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    selEnd = null;
+  }
+});
+
+bifCanvas.addEventListener('mousemove', (e) => {
+  if (selecting && selStart) {
+    const rect = bifCanvas.getBoundingClientRect();
+    selEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    drawBifWithLine();
+    bifCtx.strokeStyle = 'rgba(100,200,255,0.6)';
+    bifCtx.lineWidth = 1; bifCtx.setLineDash([4,4]);
+    bifCtx.strokeRect(Math.min(selStart.x,selEnd.x), Math.min(selStart.y,selEnd.y),
+      Math.abs(selEnd.x-selStart.x), Math.abs(selEnd.y-selStart.y));
+    bifCtx.setLineDash([]);
+  }
+});
+
+bifCanvas.addEventListener('mouseup', (e) => {
+  if (e.button===0 && selecting && selStart && selEnd) {
+    const sx=Math.min(selStart.x,selEnd.x), sy=Math.min(selStart.y,selEnd.y);
+    const sw=Math.abs(selEnd.x-selStart.x), sh=Math.abs(selEnd.y-selStart.y);
+    if (sw>5 && sh>5) {
+      const nrMin=brMin+(sx/W)*(brMax-brMin), nrMax=brMin+((sx+sw)/W)*(brMax-brMin);
+      const nxMax=bxMax-(sy/BH)*(bxMax-bxMin), nxMin=bxMax-((sy+sh)/BH)*(bxMax-bxMin);
+      brMin=nrMin; brMax=nrMax; bxMin=nxMin; bxMax=nxMax;
+      renderBifurcation();
+    }
+  }
+  selecting=false; selStart=null; selEnd=null;
+});
+
+bifCanvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault(); brMin=0; brMax=4; bxMin=0; bxMax=1; renderBifurcation();
+});
+
+bifCanvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect=bifCanvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const rC=brMin+(mx/W)*(brMax-brMin), xC=bxMax-(my/BH)*(bxMax-bxMin);
+  const f=e.deltaY>0?1.2:0.8;
+  brMin=rC-(brMax-brMin)*f*(mx/W); brMax=rC+(brMax-brMin)*f*(1-mx/W);
+  bxMin=xC-(bxMax-bxMin)*f*(1-my/BH); bxMax=xC+(bxMax-bxMin)*f*(my/BH);
+  renderBifurcation();
+});
+
+// Click on bifurcation to set r
+bifCanvas.addEventListener('dblclick', (e) => {
+  const rect = bifCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const r = brMin + (mx / W) * (brMax - brMin);
+  rSlider.value = Math.round(r * 100) / 100;
+  rFineSlider.value = 0;
+  updateAll();
+});
+
+// ===== TOUCH EVENTS FOR MOBILE =====
+let lastPinchDist = null;
+let longPressTimer = null;
+let touchStartTime = 0;
+let lastTapTime = 0;
+let lastTouchPos = null;
+let isPanning = false;
+
+function getTouchDist(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+function getTouchCenter(t1, t2, rect) {
+  return {
+    x: ((t1.clientX + t2.clientX) / 2) - rect.left,
+    y: ((t1.clientY + t2.clientY) / 2) - rect.top
+  };
+}
+
+bifCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (e.touches.length === 2) {
+    lastPinchDist = getTouchDist(e.touches[0], e.touches[1]);
+    isPanning = false;
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  } else if (e.touches.length === 1) {
+    const rect = bifCanvas.getBoundingClientRect();
+    lastTouchPos = { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    isPanning = false;
+    touchStartTime = Date.now();
+    longPressTimer = setTimeout(() => {
+      brMin=0; brMax=4; bxMin=0; bxMax=1;
+      renderBifurcation();
+      longPressTimer = null;
+    }, 700);
+  }
+}, { passive: false });
+
+bifCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  if (e.touches.length === 2) {
+    // Pinch zoom
+    const dist = getTouchDist(e.touches[0], e.touches[1]);
+    if (lastPinchDist) {
+      const rect = bifCanvas.getBoundingClientRect();
+      const center = getTouchCenter(e.touches[0], e.touches[1], rect);
+      const f = lastPinchDist / dist;
+      const rC = brMin + (center.x / W) * (brMax - brMin);
+      const xC = bxMax - (center.y / BH) * (bxMax - bxMin);
+      const rRange = (brMax - brMin) * f;
+      const xRange = (bxMax - bxMin) * f;
+      brMin = rC - rRange * (center.x / W);
+      brMax = rC + rRange * (1 - center.x / W);
+      bxMin = xC - xRange * (1 - center.y / BH);
+      bxMax = xC + xRange * (center.y / BH);
+      renderBifurcation();
+    }
+    lastPinchDist = dist;
+  } else if (e.touches.length === 1 && lastTouchPos) {
+    // Single finger pan
+    isPanning = true;
+    const rect = bifCanvas.getBoundingClientRect();
+    const cx = e.touches[0].clientX - rect.left;
+    const cy = e.touches[0].clientY - rect.top;
+    const dx = cx - lastTouchPos.x;
+    const dy = cy - lastTouchPos.y;
+    const rShift = -(dx / W) * (brMax - brMin);
+    const xShift = (dy / BH) * (bxMax - bxMin);
+    brMin += rShift; brMax += rShift;
+    bxMin += xShift; bxMax += xShift;
+    lastTouchPos = { x: cx, y: cy };
+    renderBifurcation();
+  }
+}, { passive: false });
+
+bifCanvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  lastPinchDist = null;
+  lastTouchPos = null;
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  // Double-tap to set r (only if we weren't panning)
+  if (e.changedTouches.length === 1 && !isPanning) {
+    const now = Date.now();
+    const elapsed = now - touchStartTime;
+    if (elapsed < 300) {
+      // Quick tap — check for double tap
+      if (now - lastTapTime < 400) {
+        const rect = bifCanvas.getBoundingClientRect();
+        const mx = e.changedTouches[0].clientX - rect.left;
+        const r = brMin + (mx / W) * (brMax - brMin);
+        rSlider.value = Math.round(r * 100) / 100;
+        rFineSlider.value = 0;
+        updateAll();
+        lastTapTime = 0;
+      } else {
+        lastTapTime = now;
+      }
+    }
+  }
+}, { passive: false });
+
+// Buttons
+document.getElementById('btnResetBif').addEventListener('click', () => {
+  brMin=0; brMax=4; bxMin=0; bxMax=1; renderBifurcation();
+});
+
+document.getElementById('btnColor').addEventListener('click', () => {
+  useColor = !useColor; renderBifurcation();
+});
+
+// Animate
+let animating = false, animFrame = null;
+const btnAnimate = document.getElementById('btnAnimate');
+const btnStop = document.getElementById('btnStop');
+
+btnAnimate.addEventListener('click', () => {
+  animating = true;
+  btnAnimate.style.display = 'none';
+  btnStop.style.display = 'inline-block';
+  rSlider.value = 0.5;
+  rFineSlider.value = 0;
+  function step() {
+    let r = parseFloat(rSlider.value);
+    r += 0.003;
+    if (r > 4.0) { stopAnim(); return; }
+    rSlider.value = r;
+    updateAll();
+    animFrame = requestAnimationFrame(step);
+  }
+  step();
+});
+
+function stopAnim() {
+  animating = false;
+  if (animFrame) cancelAnimationFrame(animFrame);
+  btnAnimate.style.display = 'inline-block';
+  btnStop.style.display = 'none';
+}
+
+btnStop.addEventListener('click', stopAnim);
+
+// Initial render
+renderBifurcation();
+renderOrbit();
+</script>
+</body>
+</html>
