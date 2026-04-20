@@ -227,8 +227,18 @@ footer .inner {
   font-size: 0.75rem; color: var(--text-dim);
 }
 
-/* RESPONSIVE */
-@media (max-width: 700px) {
+  /* mobile nav */
+  @media (max-width: 700px) {
+    nav { padding: 0 16px; }
+    .chaos-nav-tools { gap: 4px; }
+    .chaos-nav-tools a { font-size: 0.58rem; padding: 4px 8px; letter-spacing: 0.04em; }
+    .chaos-nav-tools .full { display: none; }
+    .chaos-nav-tools .short { display: inline; }
+  }
+  @media (min-width: 701px) {
+    .chaos-nav-tools .short { display: none; }
+    .chaos-nav-tools .full { display: inline; }
+  }
   .cards-grid { grid-template-columns: 1fr; }
   .hero { padding: 120px 20px 56px; }
   .cards-section { padding: 0 20px 64px; }
@@ -242,10 +252,10 @@ footer .inner {
 <nav>
   <div class="chaos-nav-home"><span>Home</span></div>
   <div class="chaos-nav-tools">
-    <a href="logistic_map_explorer.html">Logistic Map</a>
-    <a href="double-pendulum.html">Double Pendulum</a>
-    <a href="lorenz-attractor.html">Strange Attractors</a>
-    <a href="mandelbrot.html">Mandelbrot &amp; Julia</a>
+    <a href="logistic_map_explorer.html"><span class="full">Logistic Map</span><span class="short">Logistic</span></a>
+    <a href="double-pendulum.html"><span class="full">Double Pendulum</span><span class="short">Pendulum</span></a>
+    <a href="lorenz-attractor.html"><span class="full">Strange Attractors</span><span class="short">Attractors</span></a>
+    <a href="mandelbrot.html"><span class="full">Mandelbrot &amp; Julia</span><span class="short">Mandelbrot</span></a>
   </div>
 </nav>
 
@@ -338,7 +348,7 @@ footer .inner {
     <div class="footer-text">
       Inspired by <a href="https://www.amazon.com/Chaos-Making-Science-James-Gleick/dp/0143113453" target="_blank">James Gleick's <em>Chaos: Making a New Science</em></a>
     </div>
-    <div class="footer-url">chaos-pi-one.vercel.app</div>
+    <div class="footer-url">chaos-demos.vercel.app</div>
   </div>
 </footer>
 
