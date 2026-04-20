@@ -7,33 +7,6 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  /* ── chaos nav ── */
-  .chaos-nav {
-    position:fixed; top:0; left:0; right:0; z-index:999;
-    background:rgba(10,10,15,0.95); backdrop-filter:blur(12px);
-    border-bottom:2px solid rgba(245,166,35,0.4);
-    display:flex; align-items:center; justify-content:space-between;
-    padding:0 24px; height:52px; font-family:'JetBrains Mono',monospace;
-  }
-  .chaos-nav-home a {
-    font-size:0.75rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
-    text-decoration:none; color:#F5A623; transition:color 0.2s;
-  }
-  .chaos-nav-home a:hover { color:#FFC880; }
-  .chaos-nav-tools { display:flex; align-items:center; gap:8px; }
-  .chaos-nav-tools a {
-    font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase;
-    text-decoration:none; color:#E5E2E1;
-    padding:5px 12px; border-radius:5px; border:1px solid transparent;
-    transition:all 0.2s; white-space:nowrap;
-  }
-  .chaos-nav-tools a:hover { color:#fff; background:rgba(255,255,255,0.07); }
-  .chaos-nav-tools a.current {
-    color:#F5A623; border-color:#F5A623;
-    background:rgba(245,166,35,0.08); pointer-events:none;
-  }
-  /* ── end chaos nav ── */
   body {
     background: #0a0a0f;
     color: #c8c8d0;
@@ -146,16 +119,44 @@
     margin-top: 6px;
     text-align: center;
   }
+
+  /* ── chaos nav ── */
+  .chaos-nav {
+    position:fixed; top:0; left:0; right:0; z-index:999;
+    background:rgba(10,10,15,0.95); backdrop-filter:blur(12px);
+    border-bottom:2px solid rgba(245,166,35,0.4);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; height:52px; font-family:'JetBrains Mono',monospace;
+  }
+  .chaos-nav-home a {
+    font-size:0.75rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+    text-decoration:none; color:#F5A623; transition:color 0.2s;
+  }
+  .chaos-nav-home a:hover { color:#FFC880; }
+  .chaos-nav-tools { display:flex; align-items:center; gap:8px; }
+  .chaos-nav-tools a {
+    font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase;
+    text-decoration:none; color:#E5E2E1;
+    padding:5px 12px; border-radius:5px; border:1px solid transparent;
+    transition:all 0.2s; white-space:nowrap;
+  }
+  .chaos-nav-tools a:hover { color:#fff; background:rgba(255,255,255,0.07); }
+  .chaos-nav-tools a.current {
+    color:#F5A623; border-color:#F5A623;
+    background:rgba(245,166,35,0.08); pointer-events:none;
+  }
+  /* ── end chaos nav ── */
 </style>
 </head>
 <body>
 <nav class="chaos-nav">
   <div class="chaos-nav-home"><a href="index.html">Home</a></div>
   <div class="chaos-nav-tools">
-    <a href="logistic_map_explorer.html">Logistic Map</a>
+    <a href="logistic_map_explorer.html"><span class="full">Logistic Map</span><span class="short">Logistic</span></a>
     <a class="current" href="#">Double Pendulum</a>
-    <a href="lorenz-attractor.html">Strange Attractors</a>
-    <a href="mandelbrot.html">Mandelbrot &amp; Julia</a>
+    <a href="lorenz-attractor.html"><span class="full">Strange Attractors</span><span class="short">Attractors</span></a>
+    <a href="mandelbrot.html"><span class="full">Mandelbrot &amp; Julia</span><span class="short">Mandelbrot</span></a>
+    <a href="sierpinski.html"><span class="full">Sierpinski Triangle</span><span class="short">Sierpinski</span></a>
   </div>
 </nav>
 
