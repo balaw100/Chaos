@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sierpinski Triangle</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#06060a; color:#c8c8d0;
+  font-family:'JetBrains Mono',monospace;
+  display:flex; flex-direction:column; align-items:center;
+  padding:72px 10px 20px; user-select:none;
+}
+h1 { font-size:0.85rem; font-weight:300; letter-spacing:0.15em; text-transform:uppercase; color:#fff; margin-bottom:2px; }
+.subtitle { font-size:0.7rem; color:#888aaa; margin-bottom:8px; letter-spacing:0.05em; }
+.canvas-wrap { position:relative; border:1px solid #1a1a2e; border-radius:4px; overflow:hidden; background:#06060a; }
+canvas { display:block; }
+#message { font-size:0.7rem; color:#aac8ff; margin-top:8px; text-align:center; min-height:1.4em; letter-spacing:0.04em; }
+#counter { font-size:0.55rem; color:#555870; margin-top:3px; text-align:center; min-height:1em; }
+.btn-row { display:flex; gap:10px; margin-top:10px; justify-content:center; flex-wrap:wrap; }
+button {
+  background:#111118; border:1px solid #2a2a44; color:#fff;
+  font-family:'JetBrains Mono',monospace; font-size:0.6rem;
+  padding:6px 16px; border-radius:3px; cursor:pointer; transition:all 0.2s;
+}
+button:hover { background:#1a1a2e; }
+button.primary { background:#1e3050; border-color:#4a7aaa; color:#aac8ff; }
+button:disabled { opacity:0.35; cursor:default; }
+  .chaos-nav {
+    position:fixed; top:0; left:0; right:0; z-index:999;
+    background:rgba(10,10,15,0.95); backdrop-filter:blur(12px);
+    border-bottom:2px solid rgba(245,166,35,0.4);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; height:52px; font-family:'JetBrains Mono',monospace;
+  }
+  .chaos-nav-home a {
+    font-size:0.75rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+    text-decoration:none; color:#F5A623; transition:color 0.2s;
+  }
+  .chaos-nav-home a:hover { color:#FFC880; }
+  .chaos-nav-tools { display:flex; align-items:center; gap:8px; }
+  .chaos-nav-tools a {
+    font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase;
+    text-decoration:none; color:#E5E2E1;
+    padding:5px 12px; border-radius:5px; border:1px solid transparent;
+    transition:all 0.2s; white-space:nowrap;
+  }
+  .chaos-nav-tools a:hover { color:#fff; background:rgba(255,255,255,0.07); }
+  .chaos-nav-tools a.current {
+    color:#F5A623; border-color:#F5A623;
+    background:rgba(245,166,35,0.08); pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<nav class="chaos-nav">
+  <div class="chaos-nav-home"><a href="index.html">Home</a></div>
+  <div class="chaos-nav-tools">
+    <a href="logistic_map_explorer.html">Logistic Map</a>
+    <a href="double-pendulum.html">Double Pendulum</a>
+    <a href="lorenz-attractor.html">Strange Attractors</a>
+    <a href="mandelbrot.html">Mandelbrot &amp; Julia</a>
+    <a class="current" href="#">Sierpinski Triangle</a>
+  </div>
+</nav>
+
+<h1>Sierpinski Triangle</h1>
+<div class="subtitle">A simple rule. An impossible result.</div>
+<div class="canvas-wrap"><canvas id="c"></canvas></div>
+<div id="message">Press Begin to start</div>
+<div id="counter"></div>
+<div class="btn-row">
+  <button id="btnBegin" class="primary">Begin</button>
+  <button id="btnReset" disabled>Reset</button>
+  <button id="btnSkip" disabled>Skip to reveal</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const msg    = document.getElementById('message');
+const ctr    = document.getElementById('counter');
+const btnBegin = document.getElementById('btnBegin');
+const btnReset = document.getElementById('btnReset');
+const btnSkip  = document.getElementById('btnSkip');
+
+const W = Math.min(520, window.innerWidth - 20);
+const H = Math.round(W * 0.88);
+canvas.width = W; canvas.height = H;
+
+const PAD = 44;
+const VNAMES = ['A','B','C'];
+const VCOLS  = ['#ff6655','#44aaff','#aaff66'];
+
+// World-space vertices (fixed)
+let verts;
+function initVerts() {
+  verts = [
+    {x: W/2,     y: PAD + 10},
+    {x: PAD,     y: H - PAD},
+    {x: W - PAD, y: H - PAD}
+  ];
+}
+
+// Current view transform: world -> screen
+// screen = (world - origin) * scale + offset
+let view = {ox: W/2, oy: H/2, scale: 1};
+
+function worldToScreen(wx, wy) {
+  return {
+    x: (wx - view.ox) * view.scale + W/2,
+    y: (wy - view.oy) * view.scale + H/2
+  };
+}
+
+// Dot accumulator in WORLD space stored as typed arrays for speed
+let dotsX = new Float32Array(2000000);
+let dotsY = new Float32Array(2000000);
+let dotsC = new Uint8Array(2000000);  // 0,1,2
+let dotCount = 0;
+
+let pt = {x:0, y:0};
+let phase = 'idle';
+let skipRequested = false;
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+// ── RENDERING ────────────────────────────────────────────────────────────
+function renderAll(vertAlpha=1, highlight=-1) {
+  ctx.fillStyle = '#06060a';
+  ctx.fillRect(0,0,W,H);
+
+  // draw accumulated dots
+  for(let i=0; i<dotCount; i++) {
+    const s = worldToScreen(dotsX[i], dotsY[i]);
+    if(s.x < -1 || s.x > W+1 || s.y < -1 || s.y > H+1) continue;
+    ctx.fillStyle = VCOLS[dotsC[i]];
+    ctx.fillRect(Math.round(s.x), Math.round(s.y), 1, 1);
+  }
+
+  // triangle outline
+  if(vertAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = vertAlpha;
+    ctx.strokeStyle = '#1e1e30';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const sv = verts.map(v => worldToScreen(v.x, v.y));
+    ctx.moveTo(sv[0].x, sv[0].y);
+    ctx.lineTo(sv[1].x, sv[1].y);
+    ctx.lineTo(sv[2].x, sv[2].y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // vertices
+    verts.forEach((v,i) => {
+      const s = worldToScreen(v.x, v.y);
+      const r = (i === highlight) ? 10 : 6;
+      ctx.fillStyle = VCOLS[i];
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.font = '600 11px JetBrains Mono';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const ox = [0, -14, 14][i];
+      const oy = [-14, 10, 10][i];
+      ctx.fillText(VNAMES[i], s.x + ox, s.y + oy);
+    });
+    ctx.restore();
+  }
+}
+
+function drawDot(wx, wy, col, r=2.5) {
+  const s = worldToScreen(wx, wy);
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function addDot(vi) {
+  const v = verts[vi];
+  pt.x = lerp(pt.x, v.x, 0.5);
+  pt.y = lerp(pt.y, v.y, 0.5);
+  if(dotCount < dotsX.length) {
+    dotsX[dotCount] = pt.x;
+    dotsY[dotCount] = pt.y;
+    dotsC[dotCount] = vi;
+    dotCount++;
+  }
+}
+
+function storeDot(x, y, vi) {
+  if(dotCount < dotsX.length) {
+    dotsX[dotCount] = x;
+    dotsY[dotCount] = y;
+    dotsC[dotCount] = vi;
+    dotCount++;
+  }
+}
+
+function addDots(n) {
+  for(let i=0; i<n; i++) addDot(Math.floor(Math.random()*3));
+}
+
+// ── SMOOTH ZOOM ───────────────────────────────────────────────────────────
+// Animate view.ox, view.oy, view.scale toward target while adding dots
+async function zoomTo(targetOx, targetOy, targetScale, frames, dotsPerFrame, message) {
+  if(message) msg.textContent = message;
+  const startOx = view.ox, startOy = view.oy, startScale = view.scale;
+  for(let f=0; f<=frames; f++) {
+    const t = f/frames;
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    view.ox    = lerp(startOx,    targetOx,    ease);
+    view.oy    = lerp(startOy,    targetOy,    ease);
+    view.scale = lerp(startScale, targetScale, ease);
+    addDots(dotsPerFrame);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(20);
+  }
+}
+
+// ── ACT 1: teach the rule ─────────────────────────────────────────────────
+async function act1() {
+  phase = 'teaching';
+  view = {ox: W/2, oy: H/2, scale: 1};
+  renderAll(1);
+  msg.textContent = 'Three vertices: A, B, C';
+  await sleep(2800);
+
+  pt = {x: W*0.52, y: H*0.57};
+  msg.textContent = 'Place a dot anywhere inside the triangle';
+  renderAll(1);
+  drawDot(pt.x, pt.y, '#ffffff');
+  await sleep(2800);
+
+  for(let s=0; s<4; s++) {
+    if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
+    const vi = Math.floor(Math.random()*3);
+    const v  = verts[vi];
+
+    msg.textContent = `Pick a random vertex — it's ${VNAMES[vi]}`;
+    renderAll(1, vi);
+    drawDot(pt.x, pt.y, '#ffffff', 2.5);
+    await sleep(2200);
+    if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
+
+    msg.textContent = `Draw a line to vertex ${VNAMES[vi]}`;
+    renderAll(1, vi);
+    const spt = worldToScreen(pt.x, pt.y);
+    const sv  = worldToScreen(v.x, v.y);
+    ctx.save();
+    ctx.setLineDash([4,5]);
+    ctx.strokeStyle = VCOLS[vi];
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(spt.x, spt.y); ctx.lineTo(sv.x, sv.y); ctx.stroke();
+    ctx.restore();
+    drawDot(pt.x, pt.y, '#ffffff', 2.5);
+    await sleep(2200);
+    if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
+
+    msg.textContent = 'Move exactly halfway along that line';
+    await sleep(2000);
+    const nx = lerp(pt.x, v.x, 0.5);
+    const ny = lerp(pt.y, v.y, 0.5);
+    const startX = pt.x, startY = pt.y;
+    const FRAMES = 36;
+    for(let f=0; f<=FRAMES; f++) {
+      const t = f/FRAMES;
+      const cx = lerp(startX, nx, t);
+      const cy = lerp(startY, ny, t);
+      renderAll(1, vi);
+      const sStart = worldToScreen(startX, startY);
+      const sMid   = worldToScreen(nx, ny);
+      const sEnd   = worldToScreen(v.x, v.y);
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = VCOLS[vi];
+      ctx.globalAlpha = 0.6;
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(sStart.x, sStart.y); ctx.lineTo(worldToScreen(cx,cy).x, worldToScreen(cx,cy).y); ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = 0.15;
+      ctx.setLineDash([4,5]);
+      ctx.beginPath(); ctx.moveTo(worldToScreen(cx,cy).x, worldToScreen(cx,cy).y); ctx.lineTo(sEnd.x, sEnd.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      const angle = Math.atan2(sEnd.y - sStart.y, sEnd.x - sStart.x) + Math.PI/2;
+      ctx.save();
+      ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sMid.x + Math.cos(angle)*6, sMid.y + Math.sin(angle)*6);
+      ctx.lineTo(sMid.x - Math.cos(angle)*6, sMid.y - Math.sin(angle)*6);
+      ctx.stroke();
+      ctx.restore();
+      drawDot(cx, cy, VCOLS[vi], 3);
+      await sleep(18);
+    }
+
+    // dot is now at nx,ny — freeze it there with the full line visible
+    pt = {x: nx, y: ny};
+    const sStart2 = worldToScreen(startX, startY);
+    const sMid2   = worldToScreen(nx, ny);
+    const sEnd2   = worldToScreen(v.x, v.y);
+    const angle2  = Math.atan2(sEnd2.y - sStart2.y, sEnd2.x - sStart2.x) + Math.PI/2;
+
+    msg.textContent = `Halfway. The dot stops here — and stays.`;
+    renderAll(1, vi);
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = VCOLS[vi]; ctx.globalAlpha = 0.6; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(sStart2.x, sStart2.y); ctx.lineTo(sMid2.x, sMid2.y); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.15; ctx.setLineDash([4,5]);
+    ctx.beginPath(); ctx.moveTo(sMid2.x, sMid2.y); ctx.lineTo(sEnd2.x, sEnd2.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sMid2.x + Math.cos(angle2)*6, sMid2.y + Math.sin(angle2)*6);
+    ctx.lineTo(sMid2.x - Math.cos(angle2)*6, sMid2.y - Math.sin(angle2)*6);
+    ctx.stroke();
+    ctx.restore();
+    drawDot(nx, ny, VCOLS[vi], 5);
+    await sleep(3400);
+
+    storeDot(pt.x, pt.y, vi);
+    const finalMsg = s < 3
+      ? `Dot ${s+1} placed. Now pick another random vertex and repeat`
+      : `That's the rule. Random vertex → jump halfway → leave the dot. That's all. Now watch.`;
+    msg.textContent = finalMsg;
+    renderAll(1);
+    drawDot(pt.x, pt.y, VCOLS[vi], 2.5);
+    await sleep(s < 3 ? 2000 : 2800);
+  }
+
+  await act2();
+}
+
+// ── ACT 2: fill triangle, fade labels ────────────────────────────────────
+async function act2() {
+  phase = 'building';
+  msg.textContent = 'Same simple rule. Thousands of times.';
+  btnSkip.disabled = true;
+
+  const FADE_STEPS = 80;
+  for(let i=0; i<FADE_STEPS; i++) {
+    addDots(30);
+    const alpha = Math.max(0, 1 - i/FADE_STEPS);
+    renderAll(alpha);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+
+  // fill more silently
+  for(let i=0; i<60; i++) {
+    addDots(80);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+
+  msg.textContent = 'A triangle is appearing. But look closer.';
+  await sleep(2600);
+  await act3();
+}
+
+async function fastFill() {
+  phase = 'building';
+  msg.textContent = 'Filling...';
+  btnSkip.disabled = true;
+  addDots(8000);
+  renderAll(0);
+  ctr.textContent = dotCount.toLocaleString() + ' dots';
+  await act3();
+}
+
+// ── ACT 3: zoom into corners progressively ───────────────────────────────
+async function act3() {
+  phase = 'zooming';
+
+  // Center of bottom-left sub-triangle (1/4 point)
+  const bL = verts[1];  // bottom-left vertex
+  const cent = {x: W/2, y: H/2 - PAD*0.3};
+
+  // zoom level 1: into bottom-left quadrant
+  const z1cx = lerp(bL.x, cent.x, 0.35);
+  const z1cy = lerp(bL.y, cent.y, 0.35);
+  await zoomTo(z1cx, z1cy, 2.8, 80, 1000,
+    'Zoom in on one corner...');
+  await sleep(800);
+
+  msg.textContent = 'The same pattern emerging again inside';
+  for(let i=0; i<150; i++) {
+    addDots(2000);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+  await sleep(1800);
+
+  const z2cx = lerp(bL.x, z1cx, 0.38);
+  const z2cy = lerp(bL.y, z1cy, 0.38);
+  await zoomTo(z2cx, z2cy, 8.5, 90, 2000,
+    'Zoom in again...');
+  await sleep(800);
+
+  msg.textContent = 'Still the same. Another Sierpinski inside the last.';
+  for(let i=0; i<200; i++) {
+    addDots(3000);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+  await sleep(1800);
+
+  const z3cx = lerp(bL.x, z2cx, 0.4);
+  const z3cy = lerp(bL.y, z2cy, 0.4);
+  await zoomTo(z3cx, z3cy, 24, 100, 3000,
+    'And again...');
+  await sleep(800);
+
+  msg.textContent = 'The fractal builds itself. Always the same pattern, always deeper. An interesting geometrical order — from nothing but a coin flip and a ruler.';
+  for(let i=0; i<250; i++) {
+    addDots(4000);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+  await sleep(2400);
+
+  phase = 'running';
+  msg.textContent = 'The fractal builds itself. Always the same pattern, always deeper.';
+  runForever();
+}
+
+async function runForever() {
+  while(phase === 'running') {
+    addDots(3000);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────
+function reset() {
+  phase = 'idle';
+  skipRequested = false;
+  dotCount = 0;
+  pt = {x:0, y:0};
+  view = {ox: W/2, oy: H/2, scale: 1};
+  initVerts();
+  ctx.fillStyle = '#06060a';
+  ctx.fillRect(0,0,W,H);
+  renderAll(1);
+  msg.textContent = 'Press Begin to start';
+  ctr.textContent = '';
+  btnBegin.disabled = false;
+  btnReset.disabled = true;
+  btnSkip.disabled  = true;
+}
+
+btnBegin.addEventListener('click', () => {
+  btnBegin.disabled = false;
+  btnReset.disabled = false;
+  btnSkip.disabled  = false;
+  skipRequested = false;
+  dotCount = 0;
+  pt = {x: W*0.52, y: H*0.57};
+  view = {ox: W/2, oy: H/2, scale: 1};
+  initVerts();
+  ctx.fillStyle = '#06060a';
+  ctx.fillRect(0,0,W,H);
+  btnBegin.disabled = true;
+  act1();
+});
+
+btnSkip.addEventListener('click', () => { skipRequested = true; });
+btnReset.addEventListener('click', reset);
+
+initVerts();
+renderAll(1);
+</script>
+</body>
+</html>
