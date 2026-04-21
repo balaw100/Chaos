@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barnsley Fern</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8DRDFW56NB"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8DRDFW56NB');
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --gold: #F5A623;
+  --bg: #131313;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: #ffffff;
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 72px 12px 40px;
+  -webkit-font-smoothing: antialiased;
+}
+
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(19,19,19,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 2px solid rgba(245,166,35,0.4);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 52px;
+}
+.chaos-nav-home a {
+  font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); text-decoration: none;
+}
+.chaos-nav-tools { display: flex; align-items: center; gap: 4px; }
+.chaos-nav-tools a {
+  font-family: var(--font-body); font-size: 0.65rem;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  text-decoration: none; color: #ffffff;
+  padding: 5px 9px; border-radius: 5px;
+  border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
+}
+.chaos-nav-tools a:hover { color: #fff; background: rgba(255,255,255,0.07); }
+.chaos-nav-tools a.active { color: var(--gold); border-color: rgba(245,166,35,0.3); }
+@media(max-width:600px){
+  .chaos-nav-tools a .full { display: none; }
+  .chaos-nav-tools a .short { display: inline; }
+}
+@media(min-width:601px){
+  .chaos-nav-tools a .full { display: inline; }
+  .chaos-nav-tools a .short { display: none; }
+}
+
+.page-header { text-align: center; margin-bottom: 20px; }
+.page-header h1 {
+  font-family: var(--font-mono); font-size: 0.95rem; font-weight: 300;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #ffffff; margin-bottom: 4px;
+}
+.page-header .subtitle {
+  font-family: var(--font-mono); font-size: 0.68rem; color: #ffffff; letter-spacing: 0.08em;
+}
+
+.main-layout {
+  display: flex; gap: 20px; align-items: flex-start;
+  width: 100%; max-width: 700px;
+}
+
+.canvas-wrap {
+  border: 1px solid #1a1a2e; border-radius: 6px;
+  overflow: hidden; background: #06060a; flex-shrink: 0;
+}
+canvas { display: block; }
+
+.panel {
+  background: #0e0e14; border: 1px solid #1a1a2e; border-radius: 6px;
+  padding: 16px; min-width: 185px; flex: 1;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.panel-section-title {
+  font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 10px;
+  border-bottom: 1px solid rgba(245,166,35,0.15); padding-bottom: 6px;
+}
+
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.preset-btn {
+  background: #1a1a2e; border: 1px solid #2a2a44; color: #ffffff;
+  font-family: var(--font-mono); font-size: 0.62rem; padding: 7px 8px;
+  border-radius: 4px; cursor: pointer; letter-spacing: 0.05em;
+  transition: all 0.2s; text-align: center;
+}
+.preset-btn:hover { background: #2a2a44; }
+.preset-btn.active { border-color: var(--gold); color: var(--gold); }
+
+.slider-row { margin-bottom: 10px; }
+.slider-label {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 0.62rem; color: #ffffff; margin-bottom: 4px;
+}
+.slider-label span:last-child { color: var(--gold); }
+input[type=range] {
+  width: 100%; -webkit-appearance: none; height: 3px;
+  border-radius: 2px; background: #2a2a3a; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--gold); cursor: pointer;
+}
+
+.begin-btn {
+  width: 100%; background: rgba(245,166,35,0.1);
+  border: 1px solid rgba(245,166,35,0.5); color: var(--gold);
+  font-family: var(--font-mono); font-size: 0.75rem; padding: 10px;
+  border-radius: 4px; cursor: pointer; letter-spacing: 0.1em;
+  text-transform: uppercase; transition: all 0.2s;
+}
+.begin-btn:hover { background: rgba(245,166,35,0.2); }
+.begin-btn:disabled { opacity: 0.4; cursor: default; }
+
+.info-text {
+  font-family: var(--font-mono); font-size: 0.58rem; color: #ffffff;
+  line-height: 1.7; text-align: center; margin-top: 12px; opacity: 0.6;
+}
+
+@media(max-width: 620px) {
+  .main-layout { flex-direction: column; align-items: center; }
+  .panel { min-width: unset; width: 100%; max-width: 400px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="chaos-nav-home"><a href="index.html">Home</a></div>
+  <div class="chaos-nav-tools">
+    <a href="logistic_map_explorer.html"><span class="short">Bif</span><span class="full">Bifurcation</span></a>
+    <a href="double-pendulum.html"><span class="short">Pend</span><span class="full">Pendulum</span></a>
+    <a href="lorenz-attractor.html"><span class="short">Lorenz</span><span class="full">Lorenz</span></a>
+    <a href="mandelbrot.html"><span class="short">Mand</span><span class="full">Mandelbrot</span></a>
+    <a href="sierpinski.html"><span class="short">Sier</span><span class="full">Sierpinski</span></a>
+    <a href="barnsley-fern.html" class="active"><span class="short">Fern</span><span class="full">Barnsley Fern</span></a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>Barnsley Fern</h1>
+  <div class="subtitle">Four rules · 24 numbers · one plant</div>
+</div>
+
+<div class="main-layout">
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="panel">
+
+    <div>
+      <div class="panel-section-title">Presets</div>
+      <div class="preset-grid">
+        <button class="preset-btn active" data-key="fern">Classic Fern</button>
+        <button class="preset-btn" data-key="tree">Tree</button>
+        <button class="preset-btn" data-key="coral">Coral</button>
+        <button class="preset-btn" data-key="spiral">Spiral</button>
+        <button class="preset-btn" data-key="thorn">Thorn</button>
+        <button class="preset-btn" data-key="cyclosorus">Cyclosorus</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">Shape</div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Lean</span><span id="leanVal">0.00</span></div>
+        <input type="range" id="leanSlider" min="-0.2" max="0.2" step="0.01" value="0">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Curl</span><span id="curlVal">0.00</span></div>
+        <input type="range" id="curlSlider" min="-0.2" max="0.2" step="0.01" value="0">
+      </div>
+    </div>
+
+    <button class="begin-btn" id="beginBtn">▶ Begin</button>
+
+  </div>
+</div>
+
+<div class="info-text">
+  Each dot placed by one of four rules, chosen randomly.<br>
+  Change a preset — watch 24 numbers grow a new plant.
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const W = Math.min(390, window.innerWidth - 40);
+const H = Math.round(W * 1.4);
+canvas.width = W;
+canvas.height = H;
+
+const PRESETS = {
+  fern:      { rules: [
+    { w:1,  a:0,     b:0,     c:0,     d:0.16,  e:0,     f:0     },
+    { w:85, a:0.85,  b:0.04,  c:-0.04, d:0.85,  e:0,     f:1.60  },
+    { w:7,  a:0.20,  b:-0.26, c:0.23,  d:0.22,  e:0,     f:1.60  },
+    { w:7,  a:-0.15, b:0.28,  c:0.26,  d:0.24,  e:0,     f:0.44  },
+  ]},
+  tree:      { rules: [
+    { w:10, a:0,    b:0,     c:0,     d:0.5,  e:0,  f:0   },
+    { w:40, a:0.42, b:-0.42, c:0.42,  d:0.42, e:0,  f:0.2 },
+    { w:40, a:0.42, b:0.42,  c:-0.42, d:0.42, e:0,  f:0.2 },
+    { w:10, a:0.1,  b:0,     c:0,     d:0.1,  e:0,  f:0.2 },
+  ]},
+  coral:     { rules: [
+    { w:2,  a:0,     b:0,     c:0,      d:0.25, e:0,      f:-0.4 },
+    { w:84, a:0.95,  b:0.005, c:-0.005, d:0.93, e:-0.002, f:0.5  },
+    { w:7,  a:0.035, b:-0.2,  c:0.16,   d:0.04, e:-0.09,  f:0.02 },
+    { w:7,  a:-0.04, b:0.2,   c:0.16,   d:0.04, e:0.083,  f:0.12 },
+  ]},
+  spiral:    { rules: [
+    { w:5,  a:0,      b:0,      c:0,     d:0.4,   e:0,     f:0      },
+    { w:75, a:0.787,  b:-0.234, c:0.193, d:0.724, e:1.6,   f:-0.376 },
+    { w:10, a:0.121,  b:-0.256, c:0.306, d:0.216, e:0.627, f:1.383  },
+    { w:10, a:-0.121, b:0.257,  c:0.306, d:0.216, e:-0.39, f:1.384  },
+  ]},
+  thorn:     { rules: [
+    { w:3,  a:0,     b:0,    c:0,    d:0.5,  e:0, f:0   },
+    { w:74, a:0.77,  b:0.1,  c:-0.1, d:0.77, e:0, f:1.8 },
+    { w:13, a:0.37,  b:-0.3, c:0.3,  d:0.37, e:0, f:0.4 },
+    { w:10, a:-0.37, b:0.3,  c:0.3,  d:0.37, e:0, f:0.5 },
+  ]},
+  cyclosorus:{ rules: [
+    { w:2,  a:0,     b:0,     c:0,      d:0.25, e:0,      f:-0.14  },
+    { w:84, a:0.95,  b:0.005, c:-0.005, d:0.93, e:-0.002, f:0.5    },
+    { w:7,  a:0.035, b:-0.11, c:0.27,   d:0.01, e:-0.05,  f:0.005  },
+    { w:7,  a:-0.04, b:0.11,  c:0.27,   d:0.01, e:0.047,  f:0.06   },
+  ]},
+};
+
+let currentPreset = 'fern';
+let rules = JSON.parse(JSON.stringify(PRESETS.fern.rules));
+let animId = null;
+let slowGrow = false;
+let hasDrawnOnce = false;
+
+const leanSlider = document.getElementById('leanSlider');
+const curlSlider = document.getElementById('curlSlider');
+const leanValEl  = document.getElementById('leanVal');
+const curlValEl  = document.getElementById('curlVal');
+const beginBtn   = document.getElementById('beginBtn');
+
+let leanOffset = 0, curlOffset = 0;
+
+function updateSliderDisplay() {
+  leanOffset = parseFloat(leanSlider.value);
+  curlOffset = parseFloat(curlSlider.value);
+  leanValEl.textContent = leanOffset.toFixed(2);
+  curlValEl.textContent = curlOffset.toFixed(2);
+}
+
+leanSlider.addEventListener('input', () => { updateSliderDisplay(); slowGrow = false; startGrow(); });
+curlSlider.addEventListener('input', () => { updateSliderDisplay(); slowGrow = false; startGrow(); });
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentPreset = btn.dataset.key;
+    rules = JSON.parse(JSON.stringify(PRESETS[currentPreset].rules));
+    leanSlider.value = 0; curlSlider.value = 0;
+    leanOffset = 0; curlOffset = 0;
+    updateSliderDisplay();
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    slowGrow = false;
+    startGrow();
+  });
+});
+
+beginBtn.addEventListener('click', () => { slowGrow = !hasDrawnOnce; startGrow(); });
+
+function getBounds() {
+  const total = rules.reduce((s, r) => s + r.w, 0);
+  const thresh = []; let acc = 0;
+  rules.forEach(r => { acc += r.w / total; thresh.push(acc); });
+  let sx = 0, sy = 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < 8000; i++) {
+    const rnd = Math.random();
+    let ri = 0; while (ri < 3 && rnd > thresh[ri]) ri++;
+    const r = rules[ri];
+    const nx = r.a * sx + r.b * sy + r.e;
+    const ny = r.c * sx + r.d * sy + r.f;
+    sx = nx; sy = ny;
+    if (i > 50) {
+      if (sx < minX) minX = sx; if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+    }
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+function startGrow() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+
+  beginBtn.disabled = true;
+  beginBtn.textContent = 'Growing…';
+
+  ctx.fillStyle = '#06060a';
+  ctx.fillRect(0, 0, W, H);
+
+  const { minX, maxX, minY, maxY } = getBounds();
+  const margin = 18;
+  const scaleX = (W - margin * 2) / (maxX - minX || 1);
+  const scaleY = (H - margin * 2) / (maxY - minY || 1);
+  const scale  = Math.min(scaleX, scaleY);
+  const offX   = margin + (W - margin * 2 - (maxX - minX) * scale) / 2 - minX * scale;
+  const offY   = H - margin - minY * scale;
+
+  const total = rules.reduce((s, r) => s + r.w, 0);
+  const thresh = []; let acc = 0;
+  rules.forEach(r => { acc += r.w / total; thresh.push(acc); });
+
+  const colors = [
+    [140, 210, 100],
+    [55,  175,  75],
+    [95,  215, 115],
+    [75,  195,  85],
+  ];
+
+  const TOTAL   = 180000;
+  const PH1_DUR = 1500;   // ms slow drip
+  const PH2_DUR = 1250;   // ms ramp
+  const PH1_PPS = 60;
+  const PH2_PPS = 700;
+  const PH3_PPS = 7000;
+
+  let sx = 0, sy = 0, drawn = 0, startTs = null;
+
+  function frame(ts) {
+    if (!startTs) startTs = ts;
+    const elapsed = ts - startTs;
+
+    let pps;
+    if (!slowGrow) {
+      pps = PH3_PPS;
+    } else if (elapsed < PH1_DUR) {
+      pps = PH1_PPS;
+    } else if (elapsed < PH1_DUR + PH2_DUR) {
+      const t = (elapsed - PH1_DUR) / PH2_DUR;
+      pps = PH1_PPS + (PH2_PPS - PH1_PPS) * t;
+    } else {
+      pps = PH3_PPS;
+    }
+
+    const n = Math.round(pps);
+    for (let i = 0; i < n && drawn < TOTAL; i++) {
+      const rnd = Math.random();
+      let ri = 0; while (ri < 3 && rnd > thresh[ri]) ri++;
+      const r = rules[ri];
+      const nx = r.a * sx + (r.b + leanOffset) * sy + r.e;
+      const ny = (r.c + curlOffset) * sx + r.d * sy + r.f;
+      sx = nx; sy = ny;
+      drawn++;
+
+      const px = Math.round(sx * scale + offX);
+      const py = Math.round(H - (sy * scale + (H - offY)));
+      if (px >= 0 && px < W && py >= 0 && py < H) {
+        const alpha = 0.65 + (sy / (maxY || 1)) * 0.35;
+        const [red, green, blue] = colors[ri];
+        ctx.fillStyle = `rgba(${red},${green},${blue},${Math.min(1, alpha)})`;
+        ctx.fillRect(px, py, 1, 1);
+      }
+    }
+
+    if (drawn < TOTAL) {
+      animId = requestAnimationFrame(frame);
+    } else {
+      animId = null;
+      hasDrawnOnce = true;
+      beginBtn.disabled = false;
+      beginBtn.textContent = '▶ Begin';
+    }
+  }
+
+  animId = requestAnimationFrame(frame);
+}
+
+// Init — blank canvas, wait for Begin
+ctx.fillStyle = '#06060a';
+ctx.fillRect(0, 0, W, H);
+updateSliderDisplay();
+</script>
+</body>
+</html>
