@@ -17,7 +17,7 @@ h1 { font-size:0.85rem; font-weight:300; letter-spacing:0.15em; text-transform:u
 .subtitle { font-size:0.7rem; color:#888aaa; margin-bottom:8px; letter-spacing:0.05em; }
 .canvas-wrap { position:relative; border:1px solid #1a1a2e; border-radius:4px; overflow:hidden; background:#06060a; }
 canvas { display:block; }
-#message { font-size:0.7rem; color:#aac8ff; margin-top:8px; text-align:center; min-height:1.4em; letter-spacing:0.04em; }
+#message { font-size:0.7rem; color:#aac8ff; margin-top:8px; text-align:center; min-height:1.4em; letter-spacing:0.04em; max-width:var(--cw, 500px); margin-left:auto; margin-right:auto; word-wrap:break-word; }
 #counter { font-size:0.55rem; color:#555870; margin-top:3px; text-align:center; min-height:1em; }
 .btn-row { display:flex; gap:10px; margin-top:10px; justify-content:center; flex-wrap:wrap; }
 button {
@@ -75,6 +75,7 @@ button:disabled { opacity:0.35; cursor:default; }
   <button id="btnBegin" class="primary">Begin</button>
   <button id="btnReset" disabled>Reset</button>
   <button id="btnSkip" disabled>Skip to reveal</button>
+  <button id="btnMode">Mode: Random</button>
 </div>
 
 <script>
@@ -89,6 +90,7 @@ const btnSkip  = document.getElementById('btnSkip');
 const W = Math.min(520, window.innerWidth - 20);
 const H = Math.round(W * 0.88);
 canvas.width = W; canvas.height = H;
+document.documentElement.style.setProperty('--cw', W + 'px');
 
 const PAD = 44;
 const VNAMES = ['A','B','C'];
@@ -124,6 +126,13 @@ let dotCount = 0;
 let pt = {x:0, y:0};
 let phase = 'idle';
 let skipRequested = false;
+let useRandom = true;
+let seqIdx = 0;
+
+function pickVertex() {
+  if(useRandom) return Math.floor(Math.random()*3);
+  return seqIdx++ % 3;
+}
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function lerp(a,b,t){ return a+(b-a)*t; }
@@ -195,6 +204,10 @@ function addDot(vi) {
   }
 }
 
+function addDots(n) {
+  for(let i=0; i<n; i++) addDot(pickVertex());
+}
+
 function storeDot(x, y, vi) {
   if(dotCount < dotsX.length) {
     dotsX[dotCount] = x;
@@ -205,7 +218,7 @@ function storeDot(x, y, vi) {
 }
 
 function addDots(n) {
-  for(let i=0; i<n; i++) addDot(Math.floor(Math.random()*3));
+  for(let i=0; i<n; i++) addDot(pickVertex());
 }
 
 // ── SMOOTH ZOOM ───────────────────────────────────────────────────────────
@@ -232,23 +245,25 @@ async function act1() {
   view = {ox: W/2, oy: H/2, scale: 1};
   renderAll(1);
   msg.textContent = 'Three vertices: A, B, C';
-  await sleep(2800);
+  await sleep(3300);
 
   pt = {x: W*0.52, y: H*0.57};
   msg.textContent = 'Place a dot anywhere inside the triangle';
   renderAll(1);
   drawDot(pt.x, pt.y, '#ffffff');
-  await sleep(2800);
+  await sleep(3300);
 
-  for(let s=0; s<4; s++) {
+  for(let s=0; s<3; s++) {
     if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
-    const vi = Math.floor(Math.random()*3);
+    const vi = pickVertex();
     const v  = verts[vi];
 
-    msg.textContent = `Pick a random vertex — it's ${VNAMES[vi]}`;
+    msg.textContent = useRandom
+      ? `Pick a random vertex — it's ${VNAMES[vi]}`
+      : `Next vertex in sequence — it's ${VNAMES[vi]}`;
     renderAll(1, vi);
     drawDot(pt.x, pt.y, '#ffffff', 2.5);
-    await sleep(2200);
+    await sleep(2700);
     if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
 
     msg.textContent = `Draw a line to vertex ${VNAMES[vi]}`;
@@ -263,11 +278,11 @@ async function act1() {
     ctx.beginPath(); ctx.moveTo(spt.x, spt.y); ctx.lineTo(sv.x, sv.y); ctx.stroke();
     ctx.restore();
     drawDot(pt.x, pt.y, '#ffffff', 2.5);
-    await sleep(2200);
+    await sleep(2700);
     if(skipRequested) { view={ox:W/2,oy:H/2,scale:1}; await fastFill(); return; }
 
     msg.textContent = 'Move exactly halfway along that line';
-    await sleep(2000);
+    await sleep(2500);
     const nx = lerp(pt.x, v.x, 0.5);
     const ny = lerp(pt.y, v.y, 0.5);
     const startX = pt.x, startY = pt.y;
@@ -327,38 +342,55 @@ async function act1() {
     ctx.stroke();
     ctx.restore();
     drawDot(nx, ny, VCOLS[vi], 5);
-    await sleep(3400);
-
+    await sleep(3900);
     storeDot(pt.x, pt.y, vi);
-    const finalMsg = s < 3
-      ? `Dot ${s+1} placed. Now pick another random vertex and repeat`
-      : `That's the rule. Random vertex → jump halfway → leave the dot. That's all. Now watch.`;
+    const finalMsg = s < 2
+      ? `Dot ${s+1} placed. Now pick another ${useRandom ? 'random' : 'sequential'} vertex and repeat`
+      : useRandom
+        ? `That's the rule. Random vertex → jump halfway → leave the dot. That's all. Now watch.`
+        : `That's the rule. Sequential vertex → jump halfway → leave the dot. Now watch what happens.`;
     msg.textContent = finalMsg;
     renderAll(1);
     drawDot(pt.x, pt.y, VCOLS[vi], 2.5);
-    await sleep(s < 3 ? 2000 : 2800);
+    await sleep(s < 2 ? 2500 : 3300);
   }
 
   await act2();
 }
 
-// ── ACT 2: fill triangle, fade labels ────────────────────────────────────
+// ── ACT 2: fill triangle with crescendo, no zoom ─────────────────────────
 async function act2() {
   phase = 'building';
-  msg.textContent = 'Same simple rule. Thousands of times.';
   btnSkip.disabled = true;
 
-  const FADE_STEPS = 80;
-  for(let i=0; i<FADE_STEPS; i++) {
-    addDots(30);
-    const alpha = Math.max(0, 1 - i/FADE_STEPS);
-    renderAll(alpha);
+  if(!useRandom) { await act2deterministic(); return; }
+
+  msg.textContent = 'One dot at a time...';
+  for(let i=0; i<80; i++) {
+    addDots(1);
+    renderAll(1);
     ctr.textContent = dotCount.toLocaleString() + ' dots';
-    await sleep(16);
+    await sleep(80);
   }
 
-  // fill more silently
-  for(let i=0; i<60; i++) {
+  msg.textContent = 'Picking up speed...';
+  for(let i=0; i<100; i++) {
+    addDots(4);
+    renderAll(1);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(40);
+  }
+
+  msg.textContent = 'A shape is emerging.';
+  for(let i=0; i<120; i++) {
+    addDots(15);
+    const alpha = Math.max(0, 1 - i/120);
+    renderAll(alpha);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(20);
+  }
+
+  for(let i=0; i<150; i++) {
     addDots(80);
     renderAll(0);
     ctr.textContent = dotCount.toLocaleString() + ' dots';
@@ -368,6 +400,45 @@ async function act2() {
   msg.textContent = 'A triangle is appearing. But look closer.';
   await sleep(2600);
   await act3();
+}
+
+async function act2deterministic() {
+  seqIdx = 0;
+  msg.textContent = 'The Sierpinski Triangle randomly picks vertices. This time we pick them in sequence (A, B, C, A, B, C...)';
+  await sleep(2800);
+
+  for(let i=0; i<120; i++) {
+    addDots(1);
+    renderAll(1);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(60);
+  }
+
+  msg.textContent = 'No randomness. No fractal.';
+  await sleep(1400);
+
+  for(let i=0; i<200; i++) {
+    addDots(10);
+    const alpha = Math.max(0, 1 - i/200);
+    renderAll(alpha);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+
+  msg.textContent = 'Same rule, same sequence — the dots keep landing in the same places.';
+  await sleep(2000);
+
+  for(let i=0; i<100; i++) {
+    addDots(50);
+    renderAll(0);
+    ctr.textContent = dotCount.toLocaleString() + ' dots';
+    await sleep(16);
+  }
+
+  msg.textContent = 'A fixed geometric orbit. The randomness was everything.';
+  await sleep(3000);
+  phase = 'running';
+  runForever();
 }
 
 async function fastFill() {
@@ -393,49 +464,49 @@ async function act3() {
   const z1cy = lerp(bL.y, cent.y, 0.35);
   await zoomTo(z1cx, z1cy, 2.8, 80, 1000,
     'Zoom in on one corner...');
-  await sleep(800);
+  await sleep(600);
 
   msg.textContent = 'The same pattern emerging again inside';
-  for(let i=0; i<150; i++) {
+  for(let i=0; i<60; i++) {
     addDots(2000);
     renderAll(0);
     ctr.textContent = dotCount.toLocaleString() + ' dots';
     await sleep(16);
   }
-  await sleep(1800);
+  await sleep(600);
 
   const z2cx = lerp(bL.x, z1cx, 0.38);
   const z2cy = lerp(bL.y, z1cy, 0.38);
   await zoomTo(z2cx, z2cy, 8.5, 90, 2000,
     'Zoom in again...');
-  await sleep(800);
+  await sleep(400);
 
   msg.textContent = 'Still the same. Another Sierpinski inside the last.';
-  for(let i=0; i<200; i++) {
+  for(let i=0; i<60; i++) {
     addDots(3000);
     renderAll(0);
     ctr.textContent = dotCount.toLocaleString() + ' dots';
     await sleep(16);
   }
-  await sleep(1800);
+  await sleep(600);
 
   const z3cx = lerp(bL.x, z2cx, 0.4);
   const z3cy = lerp(bL.y, z2cy, 0.4);
   await zoomTo(z3cx, z3cy, 24, 100, 3000,
     'And again...');
-  await sleep(800);
+  await sleep(400);
 
   msg.textContent = 'The fractal builds itself. Always the same pattern, always deeper. An interesting geometrical order — from nothing but a coin flip and a ruler.';
-  for(let i=0; i<250; i++) {
+  for(let i=0; i<60; i++) {
     addDots(4000);
     renderAll(0);
     ctr.textContent = dotCount.toLocaleString() + ' dots';
     await sleep(16);
   }
-  await sleep(2400);
+  await sleep(6000);
 
   phase = 'running';
-  msg.textContent = 'The fractal builds itself. Always the same pattern, always deeper.';
+  msg.textContent = 'Now you\'ve seen it — does the random vertex selection actually matter? Hit Reset, switch to Sequential mode, and find out.';
   runForever();
 }
 
@@ -452,6 +523,7 @@ async function runForever() {
 function reset() {
   phase = 'idle';
   skipRequested = false;
+  seqIdx = 0;
   dotCount = 0;
   pt = {x:0, y:0};
   view = {ox: W/2, oy: H/2, scale: 1};
@@ -483,6 +555,13 @@ btnBegin.addEventListener('click', () => {
 
 btnSkip.addEventListener('click', () => { skipRequested = true; });
 btnReset.addEventListener('click', reset);
+
+document.getElementById('btnMode').addEventListener('click', function() {
+  useRandom = !useRandom;
+  seqIdx = 0;
+  this.textContent = useRandom ? 'Mode: Random' : 'Mode: Sequential';
+  this.classList.toggle('primary', !useRandom);
+});
 
 initVerts();
 renderAll(1);
