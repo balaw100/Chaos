@@ -192,8 +192,8 @@
     <input type="range" id="trailSlider" min="300" max="20000" step="100" value="10000">
   </div>
   <div class="slider-group">
-    <label>Speed <span id="speedVal">3</span></label>
-    <input type="range" id="speedSlider" min="1" max="10" step="1" value="3">
+    <label>Speed <span id="speedVal">15</span></label>
+    <input type="range" id="speedSlider" min="1" max="25" step="1" value="15">
   </div>
   <div class="slider-group">
     <label>Rotation speed <span id="rotVal">0.3</span></label>
@@ -228,7 +228,7 @@ const ATTRACTORS = {
     init:[1,1,1], dt:0.005,
     params:{sigma:10,rho:28,beta:2.667},
     step(x,y,z,p){return[p.sigma*(y-x), x*(p.rho-z)-y, x*y-p.beta*z];},
-    center:[0,0,25], zoom:1.0, defZoom:3,  defSpeed:7,  hue:200,
+    center:[0,0,25], zoom:1.0, defZoom:3,  defSpeed:15,  hue:200,
   },
   rossler: {
     name:'Rössler',
@@ -237,7 +237,7 @@ const ATTRACTORS = {
     init:[1,1,1], dt:0.01,
     params:{a:0.2,b:0.2,c:5.7},
     step(x,y,z,p){return[-y-z, x+p.a*y, p.b+z*(x-p.c)];},
-    center:[0,0,4], zoom:1.0, defZoom:8,  defSpeed:8,  hue:280,
+    center:[0,0,4], zoom:1.0, defZoom:8,  defSpeed:15,  hue:280,
   },
   thomas: {
     name:'Thomas',
@@ -246,7 +246,7 @@ const ATTRACTORS = {
     init:[0.1,0,0], dt:0.05,
     params:{b:0.208186},
     step(x,y,z,p){return[Math.sin(y)-p.b*x, Math.sin(z)-p.b*y, Math.sin(x)-p.b*z];},
-    center:[0,0,0], zoom:1.0, defZoom:16, defSpeed:10, hue:140,
+    center:[0,0,0], zoom:1.0, defZoom:16, defSpeed:15, hue:140,
   },
   halvorsen: {
     name:'Halvorsen',
@@ -255,7 +255,7 @@ const ATTRACTORS = {
     init:[-5,0,0], dt:0.005,
     params:{a:1.4},
     step(x,y,z,p){return[-p.a*x-4*y-4*z-y*y, -p.a*y-4*z-4*x-z*z, -p.a*z-4*x-4*y-x*x];},
-    center:[0,0,0], zoom:1.0, defZoom:5,  defSpeed:8,  hue:30,
+    center:[0,0,0], zoom:1.0, defZoom:5,  defSpeed:15,  hue:30,
   },
   aizawa: {
     name:'Aizawa',
@@ -268,7 +268,7 @@ const ATTRACTORS = {
       p.d*x + (z-p.b)*y,
       p.c + p.a*z - z*z*z/3 - (x*x+y*y)*(1+p.e*z) + p.f*z*x*x*x
     ];},
-    center:[0,0,0.5], zoom:1.0, defZoom:30, defSpeed:9,  hue:55,
+    center:[0,0,0.5], zoom:1.0, defZoom:30, defSpeed:15,  hue:55,
   },
 };
 
@@ -290,7 +290,7 @@ tsCanvas.height = HTs;
 // ── state ────────────────────────────────────────────────────────────────────
 let current='lorenz', x, y, z;
 let trail=[], tsHistory=[];
-const TS_MAX=600;
+const TS_MAX=1800;
 let paused=false, camAngleY=0.5, camAngleX=-0.25;
 let dragging=false, lastMouse=null;
 
